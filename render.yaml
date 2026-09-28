@@ -18,7 +18,16 @@ services:
     autoDeploy: true
     # `prisma generate` la BAT BUOC: thu muc src/generated/ khong duoc commit len git.
     # `prisma migrate deploy` tao/ cap nhat bang tren Neon theo prisma/migrations.
-    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    #
+    # MIGRATION PHAI CHAY QUA KET NOI TRUC TIEP (bo "-pooler"): pooler cua Neon (PgBouncer) lam
+    # `pg_advisory_lock` cua Prisma bi treo -> "Error: P1002 ... advisory lock" -> deploy that bai.
+    # Uu tien bien DIRECT_URL; khong co thi tu bo hau to "-pooler" khoi DATABASE_URL.
+    buildCommand: >-
+      npm ci && npx prisma generate &&
+      (MIGRATE_URL="${DIRECT_URL:-$DATABASE_URL}";
+      MIGRATE_URL=$(printf '%s' "$MIGRATE_URL" | sed 's/-pooler//');
+      DATABASE_URL="$MIGRATE_URL" npx prisma migrate deploy) &&
+      npm run build
     startCommand: npm run start -- -p $PORT
     healthCheckPath: /api/health
     envVars:
@@ -32,6 +41,12 @@ services:
       # --- Database (Neon) ---
       # Chuoi ket noi pooled: postgresql://user:pass@ep-xxx-pooler.<region>.aws.neon.tech/db?sslmode=require
       - key: DATABASE_URL
+        sync: false
+
+      # (Nen dat) Chuoi ket noi TRUC TIEP cua Neon - bo "-pooler" khoi host. Chi dung cho buoc
+      # `prisma migrate deploy` (PgBouncer lam advisory lock cua Prisma bi treo -> loi P1002).
+      # Bo trong cung duoc: buildCommand tu bo hau to "-pooler" khoi DATABASE_URL.
+      - key: DIRECT_URL
         sync: false
 
       # --- Auth.js ---

@@ -578,9 +578,17 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 - Không cần quyền `sa`/quyền tạo database: tài khoản Neon đã là chủ database của project đó.
 - **Nên chọn region gần Việt Nam (Singapore)**: đo thực tế với project ở `us-east-2` (Ohio) cho độ trễ
   mỗi truy vấn ~250–280ms; đổi sang Singapore sẽ nhanh hơn nhiều lần.
-- **Chuỗi pooled vs direct**: `npm run db:deploy` (và `prisma migrate deploy` trong build của Render) chạy
-  tốt với chuỗi **pooled** (`-pooler`). Riêng `prisma migrate dev` khi phát triển schema nên dùng chuỗi
-  **direct** (bỏ `-pooler` khỏi host) vì PgBouncer không hỗ trợ đầy đủ các thao tác shadow database.
+- **Chuỗi pooled vs direct**: chuỗi **pooled** (`-pooler`, PgBouncer) dùng cho **ứng dụng lúc chạy**
+  (nhiều request dùng chung kết nối). Còn **mọi lệnh migrate** (`prisma migrate deploy` trong Dockerfile /
+  Render, `npm run db:deploy`) phải đi qua chuỗi **direct** (bỏ `-pooler` khỏi host):
+  PgBouncer làm `pg_advisory_lock` của Prisma bị treo →
+  `Error: P1002 - Timed out trying to acquire a postgres advisory lock`, và lock còn có thể bị giữ lại
+  trên một backend trong pool làm **deploy sau cũng chết**. Vì vậy:
+  - Đặt `DIRECT_URL` trong `.env` (và trong Render → _Environment_) là chuỗi **không** có `-pooler`;
+  - `prisma.config.ts` ưu tiên `DIRECT_URL`; `Dockerfile`/`render.yaml` cũng tự bỏ `-pooler` khỏi
+    `DATABASE_URL` nếu thiếu `DIRECT_URL` — nên không đặt vẫn chạy, chỉ là kém tường minh.
+  - `prisma migrate dev` khi phát triển schema cũng nên dùng chuỗi direct (PgBouncer không hỗ trợ đầy
+    đủ các thao tác shadow database).
 
 ---
 
@@ -877,6 +885,7 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 | `ECONNREFUSED` / timeout khi kết nối CSDL                            | Sai host/port, mạng chặn 5432, hoặc Neon đang "ngủ"                                     | Kiểm tra chuỗi kết nối (phải có `-pooler` và `sslmode=require`), rồi chạy `npm run db:check`                                                            |
 | `password authentication failed`                                     | Sai mật khẩu trong `DATABASE_URL`                                                       | Neon → _Reset password_ → dán lại chuỗi mới vào `.env` (lưu ý `npm run env:write` giữ nguyên `DATABASE_URL` cũ)                                         |
 | `SSL required` / `no pg_hba.conf entry`                              | Thiếu `?sslmode=require`                                                                | Thêm `?sslmode=require` vào cuối `DATABASE_URL`                                                                                                         |
+| `Error: P1002 ... postgres advisory lock` khi deploy                 | `prisma migrate deploy` chạy qua chuỗi **pooled** (`-pooler`) của Neon                   | Đặt `DIRECT_URL` = chuỗi **không** có `-pooler` (Render → _Environment_); `Dockerfile`/`render.yaml` đã tự bỏ `-pooler` để dự phòng. Nếu lock đang bị giữ: `select pg_terminate_backend(pid) from pg_locks where locktype='advisory' and granted;` |
 | Tìm kiếm gõ đúng mà không ra bài                                     | Thiếu `mode: "insensitive"` — PostgreSQL phân biệt hoa/thường                           | Giữ `mode: "insensitive"` ở `song.service.ts` / `song-discovery.service.ts` (xem mục 12)                                                                |
 | Bài tải lên biến mất sau khi deploy Render                           | Ổ đĩa của gói free là tạm thời                                                          | Chuyển `STORAGE_DRIVER=s3` (+ các biến `S3_*`) hoặc gắn Render Disk                                                                                     |
 | Đăng nhập chạy ở localhost nhưng lỗi trên tên miền                   | `AUTH_URL` chưa khớp tên miền thật                                                      | Đặt `AUTH_URL=https://<tên miền>`, `AUTH_USE_SECURE_COOKIES=true` rồi deploy lại                                                                        |
