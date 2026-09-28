@@ -44,6 +44,12 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  /*
+   * KHONG dat `maximumScale: 1` / `userScalable: false` de chong zoom khi focus o nhap lieu:
+   * lam vay se chan luon thao tac chum 2 ngon tay de phong to, anh huong nguoi mat thi luc.
+   * Thay vao do, o nhap lieu tren dien thoai duoc dat font-size 16px trong `globals.css`
+   * (Safari chi tu phong to khi o duoc focus co chu nho hon 16px).
+   */
 };
 
 export default async function RootLayout({

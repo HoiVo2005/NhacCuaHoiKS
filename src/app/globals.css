@@ -553,3 +553,31 @@
     padding-top: env(safe-area-inset-top, 0px);
   }
 }
+
+/*
+ * =============================================================================
+ * Chong ZOOM khi cham vao o nhap lieu tren DIEN THOAI (iOS/Safari)
+ * =============================================================================
+ * Safari tren iPhone/iPad tu dong PHONG TO ca trang khi o duoc focus co `font-size` nho hon 16px.
+ * Cach xu ly chuan la dat dung 16px cho cac o nhap tren man hinh nho (<= 639px, trung breakpoint `sm`).
+ *
+ * Vi sao KHONG dung `maximum-scale=1` trong viewport: thuoc tinh do chan luon thao tac chum 2 ngon tay
+ * de phong to -> anh huong kha nang truy cap (nguoi mat thi luc, nguoi lon tuoi). Xem `src/app/layout.tsx`.
+ *
+ * Vi sao dat NGOAI moi `@layer`: Tailwind v4 dua utility vao `@layer utilities`, ma CSS khong nam trong
+ * layer nao luon thang CSS co layer. Neu dat trong layer, `.text-xs` (do uu tien 0,1,0) cua cac o nhap
+ * se thang `input` (0,0,1) va tinh nang nay tro nen vo hieu.
+ *
+ * Loai tru cac loai khong phai o nhap chu (o tick, nut radio, thanh truot, bang mau, nut...) - chung
+ * khong gay zoom va khong nen bi doi co chu.
+ */
+@media (max-width: 639px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not(
+      [type="file"]
+    ):not([type="submit"]):not([type="button"]):not([type="reset"]):not([type="image"]),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+

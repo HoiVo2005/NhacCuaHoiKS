@@ -782,6 +782,7 @@ npm run check:thumbs  # Test anh bia net (nang cap maxresdefault/t500x500, tu ha
 npm run check:resume  # Test "Nghe tiep tu cho dung" (nguong nho, buoc 5 giay, chay tren store that)
 npm run check:media   # Test Media Session (thong tin + anh bia net, nut tren man hinh khoa, thanh thoi gian)
 npm run check:search  # Test tim kiem khong phan biet hoa/thuong (PostgreSQL) + email dang nhap
+npm run check:mobile  # Test quy tac giao dien dien thoai (chong zoom khi focus o nhap, khong chan pinch-zoom)
 npm run check:youtube # Test dong co YouTube (khong can server, khong can trinh duyet)
 ```
 
@@ -933,6 +934,13 @@ grid/flex item:
   thay vì bị cắt (“Mới thêm vào thư…”).
 - Văn bản dài trong thẻ (tên bài, ca sĩ, nguồn phát) cần `min-w-0` + `truncate` **ngay trên phần tử
   flex con**, nếu không nhãn sẽ đẩy tràn ra ngoài thẻ.
+- **Chạm vào ô nhập liệu không làm trang phóng to**: iOS/Safari tự zoom khi ô được focus có
+  `font-size` < 16px, nên `globals.css` đặt `font-size: 16px` cho ô nhập **chữ** trên màn hình ≤ 639px
+  (loại trừ ô tick, nút radio, thanh trượt, bảng màu, nút bấm, ô chọn file). Rule này cố ý nằm **ngoài
+  mọi `@layer`**: Tailwind v4 đưa utility vào `@layer utilities` còn CSS không layer luôn thắng — nếu đặt
+  trong layer thì `text-xs` của các ô nhập sẽ vô hiệu hoá nó. Cũng cố ý **không** dùng `maximum-scale=1` /
+  `userScalable: false` vì cách đó chặn luôn thao tác chụm 2 ngón tay để phóng to (người mắt kém không
+  đọc được). Kiểm chứng bằng `npm run check:mobile`.
 
 Cách kiểm tra nhanh (không cần điện thoại): mở DevTools → chọn bề rộng 320/360/390px. Lưu ý: chế độ
 `--headless` cũ của Edge/Chrome có thể làm tròn `--window-size` lên bề rộng cửa sổ tối thiểu của
