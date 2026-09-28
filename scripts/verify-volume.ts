@@ -444,6 +444,12 @@ async function main(): Promise<void> {
       rangeInput.includes("sliderProps"),
   );
   check(
+    "Thanh truot dung tren cam ung: `touch-none` de khong bi hieu thanh CUON PANEL",
+    rangeInput.includes('"touch-none absolute left-1/2 top-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90"') &&
+      // Ban NGANG khong duoc dat touch-none (keo doc tren thanh thoi gian van cuon trang)
+      rangeInput.includes('className={cn("w-full", sliderClass, className)}'),
+  );
+  check(
     "Thanh truot dung: vach moc ve tu DAY len (moc 100% khong bi lech)",
     rangeInput.includes("style={{ bottom: `${normalizedMarker}%` }}"),
   );

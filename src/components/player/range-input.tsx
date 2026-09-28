@@ -129,6 +129,10 @@ export function RangeInput({
    * trinh duyet chi ve thanh truot ngang, nen xoay -90deg de thanh thanh doc. Xoay nguoc chieu kim
    * dong ho lam truc +x (huong to mau `to right`) tro LEN TREN, nho vay phan da keo luon o duoi va
    * KEO LEN = TANG am luong - dung cam giac nguoi dung. Vung bam rong 26px cho ngon tay.
+   *
+   * `touch-none` la BAT BUOC: panel chua thanh truot co `overflow-y-auto`, neu khong trinh duyet se
+   * hieu thao tac keo DOC la cuon panel va thanh truot khong chay. Chi dat cho ban DOC - ban NGANG
+   * giu nguyen hanh vi cu (keo doc tren thanh thoi gian van cuon trang binh thuong).
    */
   if (orientation === "vertical") {
     return (
@@ -137,7 +141,7 @@ export function RangeInput({
           {...sliderProps}
           className={cn(
             sliderClass,
-            "absolute left-1/2 top-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90",
+            "touch-none absolute left-1/2 top-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90",
           )}
           style={{ background }}
         />
