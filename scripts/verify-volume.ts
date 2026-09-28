@@ -428,6 +428,30 @@ async function main(): Promise<void> {
       (playerBar.match(/max=\{volumeMax\}/g) ?? []).length >= 2,
   );
   check(
+    "Dien thoai: icon loa mo panel co thanh truot DUNG (keo len = to hon, keo xuong = nho hon)",
+    playerBar.includes('orientation="vertical"') &&
+      playerBar.includes("<Dropdown") &&
+      playerBar.includes('side="top"') &&
+      playerBar.includes("Kéo lên/xuống") &&
+      playerBar.includes("setVolume(volumeMax)") &&
+      playerBar.includes("toggleMute()"),
+  );
+  check(
+    "Thanh truot dung: xoay -90deg (khong them thu vien) va giu vung cham 22px",
+    rangeInput.includes("VERTICAL_RANGE_HEIGHT_CLASS") &&
+      rangeInput.includes('orientation === "vertical"') &&
+      rangeInput.includes("-rotate-90") &&
+      rangeInput.includes("sliderProps"),
+  );
+  check(
+    "Thanh truot dung: vach moc ve tu DAY len (moc 100% khong bi lech)",
+    rangeInput.includes("style={{ bottom: `${normalizedMarker}%` }}"),
+  );
+  check(
+    "Thanh truot ngang khong bi doi hanh vi (van dung chung `sliderProps`)",
+    rangeInput.includes('className={cn("w-full", sliderClass, className)}'),
+  );
+  check(
     "Thanh truot: vung cham 22px o MOI kich thuoc man hinh (truoc day desktop chi 6px -> kho keo)",
     rangeInput.includes('"h-[22px] rounded-full py-2 bg-clip-content"') &&
       !rangeInput.includes('"sm:h-1.5 sm:py-0"') &&

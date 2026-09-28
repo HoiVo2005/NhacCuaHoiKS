@@ -26,6 +26,7 @@ import { RangeInput } from "@/components/player/range-input";
 import { FavoriteButton } from "@/components/music/favorite-button";
 import { Artwork } from "@/components/ui/artwork";
 import { Button } from "@/components/ui/button";
+import { Dropdown } from "@/components/ui/dropdown";
 import { SOURCE_LABELS } from "@/lib/constants";
 import { formatDuration } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -327,29 +328,73 @@ export function PlayerBar() {
           (`hidden sm:*`) nen dien thoai khong chinh duoc am luong.
         */}
         <div className="flex items-center gap-2 sm:hidden" data-mobile-volume>
-          <button
-            type="button"
-            onClick={() => usePlayerStore.getState().toggleMute()}
-            aria-label={muted ? "Bật tiếng" : "Tắt tiếng"}
-            title={muted ? "Bật tiếng" : "Tắt tiếng"}
-            className={cn(
-              "flex size-7 shrink-0 items-center justify-center rounded-full transition",
-              muted ? "text-primary" : "text-muted-foreground",
-            )}
+          {/*
+            Âm lượng trên điện thoại: icon loa mở panel có THANH TRƯỢT DỌC (kéo LÊN = to hơn,
+            kéo xuống = nhỏ hơn). Trước đây là thanh trượt ngang: vừa chiếm chỗ trên màn hình nhỏ,
+            vừa khó kéo chính xác bằng ngón tay. Panel mở lên trên nút và không tự đóng khi đang
+            kéo (xem `KEEP_OPEN_SELECTOR` trong `dropdown.tsx`).
+          */}
+          <Dropdown
+            side="top"
+            align="right"
+            className="w-auto p-2"
+            trigger={
+              <button
+                type="button"
+                aria-label={muted ? "Bật tiếng" : "Tắt tiếng"}
+                title={`Âm lượng ${formatVolumePercent(muted ? 0 : displayVolume)} (tối đa ${formatVolumePercent(volumeMax)}) — kéo lên/xuống để chỉnh`}
+                className={cn(
+                  "flex size-8 shrink-0 items-center justify-center rounded-full transition",
+                  muted ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                <VolumeIcon className="size-4" />
+              </button>
+            }
           >
-            <VolumeIcon className="size-4" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <RangeInput
-              value={muted ? 0 : displayVolume}
-              max={volumeMax}
-              step={VOLUME_STEP}
-              markerPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
-              boostFromPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
-              title={`Âm lượng ${formatVolumePercent(muted ? 0 : displayVolume)} (tối đa ${formatVolumePercent(volumeMax)})`}
-              onChange={(value) => usePlayerStore.getState().setVolume(value)}
-            />
-          </div>
+            <div className="flex flex-col items-center gap-1.5 px-1 pb-1">
+              <span className="text-[11px] font-semibold tabular-nums text-foreground">
+                {formatVolumePercent(muted ? 0 : displayVolume)}
+              </span>
+
+              <RangeInput
+                orientation="vertical"
+                value={muted ? 0 : displayVolume}
+                max={volumeMax}
+                step={VOLUME_STEP}
+                markerPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
+                boostFromPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
+                title={`Âm lượng ${formatVolumePercent(muted ? 0 : displayVolume)} (tối đa ${formatVolumePercent(volumeMax)})`}
+                onChange={(value) => usePlayerStore.getState().setVolume(value)}
+                className="my-1"
+              />
+
+              <span className="text-[10px] text-muted-foreground">Kéo lên/xuống</span>
+
+              <div className="flex gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => usePlayerStore.getState().toggleMute()}
+                >
+                  {muted ? "Bật tiếng" : "Tắt tiếng"}
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 px-2 text-xs"
+                  title="Đặt mức tối đa của nguồn đang phát"
+                  onClick={() => usePlayerStore.getState().setVolume(volumeMax)}
+                >
+                  Tối đa
+                </Button>
+              </div>
+            </div>
+          </Dropdown>
+
           <span className="w-9 shrink-0 text-right text-[11px] tabular-nums text-muted-foreground">
             {formatVolumePercent(muted ? 0 : displayVolume)}
           </span>

@@ -241,6 +241,20 @@ Quy ước áp dụng:
   - Luật nằm ở `src/lib/media-session.ts`, cầu nối ở `src/components/player/media-session-bridge.tsx` —
     kiểm chứng bằng `npm run check:media`.
 
+- **Trình bày trên điện thoại** (hai chỗ trước đây khó dùng, đã sửa):
+  - **Hẹn giờ tắt nhạc**: dưới 640px, menu nhỏ được thay bằng **panel rộng nổi phía trên thanh phát** —
+    dùng **cùng bộ class** với panel “Danh sách phát” nên nhìn và bấm giống hệt nhau; đóng bằng nút `X`,
+    nút “Đóng” hoặc phím `Esc`. Trên desktop vẫn là menu nhỏ mở lên trên (`side="top"`) như cũ.
+  - **Âm lượng**: **icon loa** mở panel có **thanh trượt DỌC** — **kéo lên = to hơn, kéo xuống = nhỏ hơn**,
+    kèm nút Tắt/Bật tiếng và “Tối đa” (mức cao nhất mà nguồn đang phát cho phép). Thanh trượt vẫn là
+    `<input type="range">` native **xoay `-90deg`** nên không thêm thư viện, giữ nguyên vùng chạm 22px;
+    phần đã kéo được tô từ **dưới lên** nên cảm giác kéo đúng chiều.
+  - Cả hai dùng hook `useIsMobile()` (`src/hooks/use-is-mobile.ts` — `matchMedia("(max-width: 639px)")`,
+    có giá trị riêng cho SSR để không lệch hydration). Phải **chọn một** cách trình bày thay vì render cả
+    hai rồi ẩn bằng CSS: bản bị ẩn vẫn nghe sự kiện `mousedown` và sẽ đóng panel đang mở của bản kia.
+  - Kiểm chứng bằng `npm run check:sleep` và `npm run check:volume` (có cả phép thử render DOM thật của
+    thanh trượt dọc trước khi phát hành).
+
 Độ bền của trình phát (kiểm chứng bằng `npm run check:youtube`):
 
 - Chờ sự kiện `onReady` trước khi gọi `playVideo`/`loadVideoById` — tránh lỗi

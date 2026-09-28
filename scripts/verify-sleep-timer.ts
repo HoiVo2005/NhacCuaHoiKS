@@ -366,6 +366,47 @@ check(
 const engineSource = readSource("src/components/player/player-engine.tsx");
 check("Dong co dung phat khi het bai neu dang hen gio", engineSource.includes("handleTrackEnded"));
 
+/* --------------------- Man hinh dien thoai: panel rong --------------------- */
+const mobileHookSource = readSource("src/hooks/use-is-mobile.ts");
+const queuePanelSource = readSource("src/components/player/queue-panel.tsx");
+
+check(
+  "Dien thoai: hen gio hien panel rong giong 'Danh sach phat' (khong con menu nho sat mep duoi)",
+  buttonSource.includes("useIsMobile") &&
+    buttonSource.includes('role="dialog"') &&
+    buttonSource.includes("w-[min(93vw,380px)]") &&
+    buttonSource.includes("animate-slide-up") &&
+    buttonSource.includes("fixed bottom-36 right-3"),
+);
+check(
+  "Panel hen gio va panel Danh sach phat dung CUNG bo class (nhin giong nhau)",
+  queuePanelSource.includes("fixed bottom-36 right-3") &&
+    buttonSource.includes("fixed bottom-36 right-3") &&
+    queuePanelSource.includes("glass safe-bottom animate-slide-up") &&
+    buttonSource.includes("glass safe-bottom animate-slide-up"),
+);
+check(
+  "Desktop van la menu nho mo len tren (khong doi hanh vi cu)",
+  buttonSource.includes('side="top"') && buttonSource.includes("min-w-64 max-h-[70vh]"),
+);
+check(
+  "Noi dung hen gio chi viet MOT lan, dung lai cho ca hai cach trinh bay",
+  buttonSource.includes("const panelContent") &&
+    (buttonSource.match(/\{panelContent\}/g) ?? []).length >= 2,
+);
+check(
+  "Panel mobile dong duoc bang nut X / nut Dong / phim Esc",
+  buttonSource.includes("onClick={closeMenu}") &&
+    buttonSource.includes('event.key === "Escape"') &&
+    buttonSource.includes("Đóng"),
+);
+check(
+  "Hook nhan dien mobile: matchMedia 640px + co gia tri cho SSR (khong lech hydration)",
+  mobileHookSource.includes('export const MOBILE_MEDIA_QUERY = "(max-width: 639px)"') &&
+    mobileHookSource.includes("useSyncExternalStore") &&
+    mobileHookSource.includes("getServerSnapshot"),
+);
+
 const failures = results.filter((line) => line.startsWith("FAIL"));
 console.log(results.join("\n"));
 console.log(`\nTONG KET: ${results.length - failures.length} PASS / ${failures.length} FAIL`);

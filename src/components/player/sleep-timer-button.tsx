@@ -6,6 +6,7 @@ import { Clock, Timer, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dropdown, DropdownItem, DropdownLabel } from "@/components/ui/dropdown";
 import { Input } from "@/components/ui/input";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 import {
   describeSleepTimer,
   formatSleepRemaining,
@@ -35,6 +36,7 @@ import { usePlayerStore } from "@/store/player-store";
  * - “Hết bài này thì tắt”: động cơ gọi `handleTrackEnded()` khi hết bài rồi dừng hẳn.
  */
 export function SleepTimerButton() {
+  const isMobile = useIsMobile();
   const sleepMode = usePlayerStore((state) => state.sleepMode);
   const sleepEndsAt = usePlayerStore((state) => state.sleepEndsAt);
   const sleepTracksLeft = usePlayerStore((state) => state.sleepTracksLeft);
@@ -134,31 +136,45 @@ export function SleepTimerButton() {
       ? describeSleepTimer(sleepMode, sleepEndsAt)
       : describeSleepTimer(sleepMode, null, 0, sleepTracksLeft);
 
-  return (
-    <Dropdown
-      side="top"
-      className="min-w-64 max-h-[70vh]"
-      open={open}
-      onOpenChange={handleOpenChange}
-      trigger={
-        <span className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className={cn("size-9 sm:size-8", isOn && "text-primary")}
-            title={description}
-            aria-label={description}
-          >
-            <Clock />
-          </Button>
-          {badge ? (
-            <span className="hidden text-[11px] font-semibold tabular-nums text-primary sm:inline">
-              {badge}
-            </span>
-          ) : null}
+  /*
+   * Dong panel bang phim Esc (dien thoai van co the cam ban phim ngoai; desktop thi menu
+   * da tu xu ly Esc trong `dropdown.tsx`).
+   */
+  useEffect(() => {
+    if (!isMobile || !open) return;
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, open]);
+
+  /** Nut hen gio tren thanh phat (dung chung cho menu desktop va panel mobile) */
+  const trigger = (
+    <span className="flex items-center gap-1">
+      <Button
+        variant="ghost"
+        size="icon-sm"
+        className={cn("size-9 sm:size-8", isOn && "text-primary")}
+        title={description}
+        aria-label={description}
+      >
+        <Clock />
+      </Button>
+      {badge ? (
+        <span className="hidden text-[11px] font-semibold tabular-nums text-primary sm:inline">
+          {badge}
         </span>
-      }
-    >
+      ) : null}
+    </span>
+  );
+
+  /** Toan bo noi dung hen gio - dung lai o ca hai cach trinh bay (menu nho / panel mobile) */
+  const panelContent = (
+    <>
       <DropdownLabel>{isOn ? description : "Hẹn giờ tắt nhạc"}</DropdownLabel>
 
       {SLEEP_TIMER_MINUTES.map((minutes) => (
@@ -305,6 +321,69 @@ export function SleepTimerButton() {
           Tắt hẹn giờ
         </DropdownItem>
       ) : null}
+    </>
+  );
+
+  /*
+   * DIEN THOAI: hien thi nhu "Danh sach phat" - panel rong noi ngay tren thanh phat.
+   *
+   * Vi sao khong dung menu nho nhu desktop: nut hen gio nam sat mep duoi man hinh nen menu nho
+   * (min-w-48, do xuong tren nut) rat kho bam tren dien thoai, lai bi cat khi ban phim ao mo len.
+   * Panel nay dung CHUNG bo class voi `queue-panel.tsx` de hai khu vuc trong giong nhau.
+   */
+  if (isMobile) {
+    return (
+      <>
+        {trigger}
+
+        {open ? (
+          <div
+            role="dialog"
+            aria-label="Hẹn giờ tắt nhạc"
+            className="glass safe-bottom animate-slide-up fixed bottom-36 right-3 z-[60] flex max-h-[68vh] w-[min(93vw,380px)] flex-col overflow-hidden rounded-2xl border border-border/80 shadow-2xl sm:bottom-24"
+          >
+            <header className="flex items-start justify-between gap-2 border-b border-border/70 px-4 py-3">
+              <div className="flex items-center gap-2">
+                <Clock className="size-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-sm font-semibold">Hẹn giờ tắt nhạc</p>
+                  <p className="text-[11px] text-muted-foreground">{description}</p>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                onClick={closeMenu}
+                title="Đóng"
+                aria-label="Đóng"
+              >
+                <X />
+              </Button>
+            </header>
+
+            <div className="scrollbar-thin flex-1 overflow-y-auto p-2">{panelContent}</div>
+
+            <footer className="flex justify-end border-t border-border/70 px-3 py-2">
+              <Button variant="ghost" size="sm" onClick={closeMenu}>
+                Đóng
+              </Button>
+            </footer>
+          </div>
+        ) : null}
+      </>
+    );
+  }
+
+  return (
+    <Dropdown
+      side="top"
+      className="min-w-64 max-h-[70vh]"
+      open={open}
+      onOpenChange={handleOpenChange}
+      trigger={trigger}
+    >
+      {panelContent}
     </Dropdown>
   );
 }
