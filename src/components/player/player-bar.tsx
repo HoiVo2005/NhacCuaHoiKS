@@ -337,8 +337,13 @@ export function PlayerBar() {
           */}
           <Dropdown
             side="top"
-            align="right"
-            className="p-3"
+            /*
+             * Nút loa nằm ở ĐẦU hàng (bên trái) nên panel phải mở sang PHẢI; nếu căn về phía phải
+             * (mặc định của Dropdown) thì panel bị đẩy ra ngoài mép trái màn hình, chỉ thấy một dải cắt.
+             * Bề rộng chốt theo màn hình (`82vw`, tối đa 300px) để luôn nằm trong tầm nhìn.
+             */
+            align="left"
+            className="w-[min(82vw,300px)] p-3"
             trigger={
               <button
                 type="button"
@@ -353,7 +358,7 @@ export function PlayerBar() {
               </button>
             }
           >
-            <div className="flex items-start gap-4">
+            <div className="flex items-stretch gap-3">
               <VerticalVolumeSlider
                 value={muted ? 0 : displayVolume}
                 max={volumeMax}
@@ -362,11 +367,11 @@ export function PlayerBar() {
                 onChange={(value) => usePlayerStore.getState().setVolume(value)}
               />
 
-              <div className="flex min-w-28 flex-col gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
                 <span className="text-base font-semibold tabular-nums text-foreground">
                   {formatVolumePercent(muted ? 0 : displayVolume)}
                 </span>
-                <span className="text-[10px] leading-snug text-muted-foreground">
+                <span className="break-words text-[10px] leading-snug text-muted-foreground">
                   Kéo lên để to hơn, kéo xuống để nhỏ hơn · tối đa{" "}
                   {formatVolumePercent(volumeMax)}
                 </span>
@@ -375,7 +380,7 @@ export function PlayerBar() {
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className="h-8 justify-start px-2.5 text-xs"
+                  className="h-9 w-full justify-center gap-1.5 px-2.5 text-xs"
                   onClick={() => usePlayerStore.getState().toggleMute()}
                 >
                   {muted ? "Bật tiếng" : "Tắt tiếng"}
@@ -384,7 +389,7 @@ export function PlayerBar() {
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className="h-8 justify-start px-2.5 text-xs"
+                  className="h-9 w-full justify-center gap-1.5 px-2.5 text-xs"
                   title="Đặt mức tối đa của nguồn đang phát"
                   onClick={() => usePlayerStore.getState().setVolume(volumeMax)}
                 >

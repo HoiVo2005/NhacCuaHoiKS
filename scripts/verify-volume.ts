@@ -442,6 +442,19 @@ const verticalSlider = read("src/components/player/vertical-volume-slider.tsx");
       playerBar.includes("toggleMute()"),
   );
   check(
+    "Panel am luong mobile mo SANG PHAI + rong theo man hinh (nut loa o dau hang nen align=right se day panel ra ngoai)",
+    playerBar.includes('align="left"') &&
+      playerBar.includes('className="w-[min(82vw,300px)] p-3"') &&
+      !playerBar.includes('align="right"'),
+  );
+  check(
+    "Panel am luong mobile khong bi CAT noi dung: cot chu co the co lai, nut rong het cot",
+    playerBar.includes("flex min-w-0 flex-1 flex-col gap-2") &&
+      playerBar.includes("break-words text-[10px]") &&
+      (playerBar.match(/h-9 w-full justify-center/g) ?? []).length === 2,
+  );
+
+  check(
     "Thanh truot dung: KHONG con input xoay -90deg (vung cham 22px nen keo bi truot ra ngoai)",
     !playerBar.includes('orientation="vertical"') &&
       !rangeInput.includes("orientation") &&

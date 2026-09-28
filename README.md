@@ -256,6 +256,8 @@ Quy ước áp dụng:
     hiểu là bấm ra ngoài nên panel tự đóng). Panel không tự đóng khi đang kéo
     (`data-dropdown-keep-open`) và không bị cuộn trang (`touch-none`); dùng được cả bàn phím
     (`↑`/`↓`/`Home`/`End`) và có `role="slider"` cho trình đọc màn hình.
+    Panel chốt `align="left"` (nút loa nằm ở **đầu hàng**) và rộng `min(82vw, 300px)`: nếu để
+    `align="right"` thì panel bị đẩy ra ngoài mép trái, người dùng chỉ thấy một dải bị cắt.
   - Cả hai dùng hook `useIsMobile()` (`src/hooks/use-is-mobile.ts` — `matchMedia("(max-width: 639px)")`,
     có giá trị riêng cho SSR để không lệch hydration). Phải **chọn một** cách trình bày thay vì render cả
     hai rồi ẩn bằng CSS: bản bị ẩn vẫn nghe sự kiện `mousedown` và sẽ đóng panel đang mở của bản kia.
