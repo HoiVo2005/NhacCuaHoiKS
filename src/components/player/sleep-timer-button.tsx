@@ -343,7 +343,28 @@ export function SleepTimerButton() {
   if (isMobile) {
     return (
       <>
-        {trigger}
+        {/*
+         * Mobile: KHONG co `Dropdown` boc ngoai nua, nen phai TU lo viec mo/dong.
+         * (Loi da gap that: bo `Dropdown` di de doi sang panel rong nhung quen gan su kien click
+         * -> bam nut hen gio khong co gi xay ra. Desktop van dung `Dropdown` o duoi nen khong bi.)
+         */}
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={open}
+          aria-label={description}
+          title={description}
+          onClick={() => handleOpenChange(!open)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              handleOpenChange(!open);
+            }
+          }}
+          className="flex cursor-pointer items-center gap-1 rounded-full"
+        >
+          {trigger}
+        </div>
 
         {open ? (
           <div

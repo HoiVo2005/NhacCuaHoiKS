@@ -401,6 +401,20 @@ check(
     buttonSource.includes("Đóng"),
 );
 check(
+  "Nut hen gio tren mobile TU xu ly mo/dong panel (khong con `Dropdown` boc ngoai)",
+  /*
+   * Loi da gap that: doi sang panel rong cho mobile nhung quen gan su kien click (lop `Dropdown`
+   * cu chinh la thu bat click) -> bam nut khong co gi xay ra. Kiem tra nay khoa lai.
+   */
+  buttonSource.includes("onClick={() => handleOpenChange(!open)}") &&
+    buttonSource.includes('role="button"') &&
+    buttonSource.includes("aria-expanded={open}"),
+);
+check(
+  "Mo bang ban phim duoc (Enter / Space) giong nhu menu desktop",
+  buttonSource.includes('event.key === "Enter"') && buttonSource.includes('event.key === " "'),
+);
+check(
   "Mo hen gio thi dong 'Danh sach phat' (hai panel cung vi tri, khong de chong nhau)",
   buttonSource.includes("usePlayerStore.getState().queueOpen") &&
     buttonSource.includes("toggleQueue()"),
