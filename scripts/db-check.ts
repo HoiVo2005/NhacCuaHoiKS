@@ -34,7 +34,21 @@ async function main() {
       : "(chua co bang nao - hay chay `npm run db:deploy` truoc)",
   );
 
-  console.log("USER COUNT:", await prisma.user.count());
+  /**
+   * Dem user. Khi CSDL moi tao (chua chay `npm run db:deploy`) thi bang chua ton tai -
+   * day la trang thai binh thuong, khong phai loi ket noi.
+   */
+  let userCount: number | null = null;
+  try {
+    userCount = await prisma.user.count();
+  } catch {
+    userCount = null;
+  }
+
+  console.log(
+    "USER COUNT:",
+    userCount === null ? "(chua co bang `users` - hay chay `npm run db:deploy`)" : userCount,
+  );
 
   await prisma.$disconnect();
 }

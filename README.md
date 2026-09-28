@@ -520,6 +520,11 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 
 - Neon có **branch** giống Git: nên tạo một branch riêng cho dev để thử nghiệm mà không đụng dữ liệu thật.
 - Không cần quyền `sa`/quyền tạo database: tài khoản Neon đã là chủ database của project đó.
+- **Nên chọn region gần Việt Nam (Singapore)**: đo thực tế với project ở `us-east-2` (Ohio) cho độ trễ
+  mỗi truy vấn ~250–280ms; đổi sang Singapore sẽ nhanh hơn nhiều lần.
+- **Chuỗi pooled vs direct**: `npm run db:deploy` (và `prisma migrate deploy` trong build của Render) chạy
+  tốt với chuỗi **pooled** (`-pooler`). Riêng `prisma migrate dev` khi phát triển schema nên dùng chuỗi
+  **direct** (bỏ `-pooler` khỏi host) vì PgBouncer không hỗ trợ đầy đủ các thao tác shadow database.
 
 ---
 
@@ -530,6 +535,15 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 > npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"
 > ```
 > Thêm `--dry-run` để kiểm tra tham số (email hợp lệ, mật khẩu ≥ 8 ký tự) mà không ghi vào CSDL.
+>
+> **Đã seed rồi mà muốn xoá dữ liệu mẫu (giữ tài khoản)?** `prisma migrate reset` của Prisma 7
+> **không có cờ `--skip-seed`** (chạy vào là nó báo lỗi trợ giúp; nếu chạy được thì nó seed lại dữ liệu).
+> Cách đúng là xoá bằng SQL:
+> ```bash
+> npm run db:wipe-sample
+> # hoac: npx prisma db execute --file scripts/wipe-sample-data.sql
+> ```
+> (file này TRUNCATE toàn bộ bảng nghiệp vụ và xoá 3 tài khoản mẫu, giữ lại tài khoản quản trị thật).
 
 | Vai trò | Email | Mật khẩu |
 | --- | --- | --- |

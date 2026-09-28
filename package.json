@@ -19,6 +19,7 @@
     "db:reset": "prisma migrate reset --force",
     "db:studio": "prisma studio",
     "db:check": "tsx scripts/db-check.ts",
+    "db:wipe-sample": "prisma db execute --file scripts/wipe-sample-data.sql",
     "admin:create": "tsx scripts/create-admin.ts",
     "metadata:check": "tsx scripts/metadata-check.ts",
     "db:setup": "prisma generate && prisma migrate deploy && npm run db:seed",
