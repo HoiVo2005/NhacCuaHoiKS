@@ -2,9 +2,19 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, Plus, Shield, ShieldOff, Trash2, UserCheck, UserX } from "lucide-react";
+import {
+  KeyRound,
+  MonitorSmartphone,
+  Plus,
+  Shield,
+  ShieldOff,
+  Trash2,
+  UserCheck,
+  UserX,
+} from "lucide-react";
 import { toast } from "sonner";
 
+import { DeviceManager } from "@/components/auth/device-manager";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useConfirm } from "@/components/ui/confirm-dialog";
@@ -28,6 +38,7 @@ export function EmployeeManager({ initialUsers }: { initialUsers: UserDTO[] }) {
   const [users, setUsers] = useState(initialUsers);
   const [createOpen, setCreateOpen] = useState(false);
   const [passwordTarget, setPasswordTarget] = useState<UserDTO | null>(null);
+  const [deviceTarget, setDeviceTarget] = useState<UserDTO | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [pending, setPending] = useState(false);
 
@@ -230,6 +241,14 @@ export function EmployeeManager({ initialUsers }: { initialUsers: UserDTO[] }) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
+                      title="Thiết bị đang đăng nhập (IP, vị trí) — đăng xuất / chặn đăng nhập"
+                      onClick={() => setDeviceTarget(user)}
+                    >
+                      <MonitorSmartphone />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       title="Đặt lại mật khẩu"
                       onClick={() => setPasswordTarget(user)}
                     >
@@ -348,6 +367,33 @@ export function EmployeeManager({ initialUsers }: { initialUsers: UserDTO[] }) {
               Đặt lại mật khẩu
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Thiết bị đang đăng nhập của nhân viên: xem IP / vị trí, đăng xuất từng máy hoặc chặn */}
+      <Dialog
+        open={deviceTarget !== null}
+        onOpenChange={(open) => {
+          if (!open) setDeviceTarget(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Thiết bị đang đăng nhập</DialogTitle>
+            <DialogDescription>
+              {deviceTarget ? `${deviceTarget.name} · ${deviceTarget.email}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          {deviceTarget ? (
+            <DeviceManager
+              key={deviceTarget.id}
+              scope="admin"
+              userId={deviceTarget.id}
+              title={`Thiết bị của ${deviceTarget.name}`}
+              description="Đăng xuất từng thiết bị hoặc chặn đăng nhập cho tới khi được mở chặn."
+            />
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

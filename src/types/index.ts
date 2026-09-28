@@ -10,6 +10,40 @@ export interface SessionUser {
   avatarUrl?: string | null;
 }
 
+/** Thiết bị đã đăng nhập: ĐANG dùng | đã bị đăng xuất từ xa | bị chặn đăng nhập */
+export type DeviceStatus = "ACTIVE" | "REVOKED" | "BLOCKED";
+
+/**
+ * Thiết bị / phiên đăng nhập gửi xuống client (trang “Thiết bị đang đăng nhập”).
+ * Hiển thị: tên máy, IP, vị trí, lần dùng gần nhất + trạng thái chặn.
+ */
+export interface DeviceDTO {
+  id: string;
+  /** Tên do người dùng tự đặt (nếu có) */
+  label: string | null;
+  /** Tên nhận diện tự động từ User-Agent */
+  deviceName: string;
+  /** Tên để hiển thị: `label` nếu có, ngược lại là `deviceName` */
+  displayName: string;
+  browser: string | null;
+  platform: string | null;
+  ipAddress: string | null;
+  /** IP kèm ghi chú khi là mạng nội bộ (localhost/LAN) */
+  ipLabel: string;
+  /** Vị trí suy ra từ IP, ví dụ “Hà Nội, Việt Nam” */
+  location: string | null;
+  firstLoginAt: string;
+  lastSeenAt: string;
+  /** Có phải thiết bị đang dùng để xem trang này không */
+  isCurrent: boolean;
+  revokedAt: string | null;
+  revokedByEmail: string | null;
+  blockedAt: string | null;
+  blockedByEmail: string | null;
+  blockedReason: string | null;
+  status: DeviceStatus;
+}
+
 export interface GenreDTO {
   id: string;
   name: string;

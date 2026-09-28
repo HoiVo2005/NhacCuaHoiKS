@@ -1,3 +1,4 @@
+import { DeviceManager } from "@/components/auth/device-manager";
 import { ProfileForm } from "@/components/auth/profile-form";
 import { requireUserPage } from "@/lib/auth/guards";
 import { prisma } from "@/lib/db/prisma";
@@ -46,6 +47,9 @@ export default async function ProfilePage() {
           </p>
         </div>
       </section>
+
+      {/* Thiết bị đang đăng nhập: IP, tên máy, vị trí + đăng xuất / chặn đăng nhập từng thiết bị */}
+      <DeviceManager />
     </div>
   );
 }

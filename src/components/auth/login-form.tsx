@@ -1,14 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Eye, EyeOff, Loader2, LogIn } from "lucide-react";
+import { Eye, EyeOff, Loader2, LogIn, ShieldAlert } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface DeviceStatusResponse {
+  deviceName?: string;
+  ipAddress?: string | null;
+  blocked?: boolean;
+  blockedReason?: string | null;
+  blockedByEmail?: string | null;
+}
+
+/**
+ * Hỏi máy chủ xem THIẾT BỊ đang dùng có bị chặn đăng nhập không.
+ * Cũng là lần gọi đầu tiên giúp máy chủ đặt cookie định danh thiết bị (`nch_device`).
+ */
+async function fetchDeviceStatus(email: string | null): Promise<DeviceStatusResponse | null> {
+  try {
+    const query = email ? `?email=${encodeURIComponent(email)}` : "";
+    const response = await fetch(`/api/device-status${query}`, { cache: "no-store" });
+    if (!response.ok) return null;
+
+    return (await response.json()) as DeviceStatusResponse;
+  } catch {
+    return null;
+  }
+}
 
 export function LoginForm() {
   const router = useRouter();
@@ -20,6 +44,24 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deviceHint, setDeviceHint] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void (async () => {
+      const status = await fetchDeviceStatus(null);
+      if (!active || !status?.deviceName) return;
+
+      setDeviceHint(
+        `Thiết bị này: ${status.deviceName}${status.ipAddress ? ` · IP ${status.ipAddress}` : ""}`,
+      );
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -34,6 +76,21 @@ export function LoginForm() {
       });
 
       if (!result || result.error) {
+        /*
+         * Có thể thiết bị này đã bị CHẶN đăng nhập (chặn từ trang “Thiết bị đang đăng nhập”).
+         * Hỏi máy chủ để báo đúng lý do thay vì đổ lỗi cho mật khẩu.
+         */
+        const status = await fetchDeviceStatus(email);
+
+        if (status?.blocked) {
+          setError(
+            `Thiết bị ${status.deviceName ? `“${status.deviceName}” ` : ""}đã bị chặn đăng nhập${
+              status.blockedByEmail ? ` (bởi ${status.blockedByEmail})` : ""
+            }. ${status.blockedReason ? `${status.blockedReason}. ` : ""}Liên hệ quản trị viên để được mở chặn.`,
+          );
+          return;
+        }
+
         setError("Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khoá.");
         return;
       }
@@ -94,6 +151,13 @@ export function LoginForm() {
             </button>
           </div>
         </div>
+
+        {deviceHint ? (
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ShieldAlert className="size-3.5 shrink-0" />
+            {deviceHint}
+          </p>
+        ) : null}
 
         {error ? (
           <p className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">

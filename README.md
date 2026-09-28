@@ -393,6 +393,37 @@ Quy ước áp dụng:
   không bắn `playProgress`; thời lượng lấy từ CSDL ngay khi nạp rồi cập nhật lại từ widget.
   Kiểm chứng bằng `npm run check:soundcloud`.
 
+### Thiết bị đang đăng nhập (quản lý phiên theo từng máy)
+
+Mở **Hồ sơ cá nhân** (`/music/profile`) → mục **“Thiết bị đang đăng nhập”**: mỗi máy đang dùng tài khoản
+được hiện rõ **tên máy** (suy ra từ User-Agent: `Chrome 141 trên Windows`, `Safari 17 trên iPhone`…),
+**IP**, **vị trí** (thành phố/quốc gia suy từ IP), **trình duyệt / hệ điều hành**, **đăng nhập lần đầu**,
+**hoạt động gần nhất**, kèm nhãn `Thiết bị này` cho máy đang xem.
+
+- **Đăng xuất** một thiết bị → phiên của máy đó hết hiệu lực ngay (máy đó phải đăng nhập lại).
+- **Đăng xuất máy khác** → đóng mọi phiên khác nhưng giữ máy đang dùng.
+- **Đăng xuất tất cả** → đóng cả máy đang dùng rồi đưa về trang đăng nhập.
+- **Chặn đăng nhập** → cắt phiên hiện tại **và** không cho máy đó đăng nhập lại cho tới khi bấm
+  **Mở chặn** (dùng khi mất điện thoại/máy là). Mở chặn **không** khôi phục phiên cũ — máy đó vẫn phải
+  đăng nhập lại bằng mật khẩu.
+- **Đổi tên** để đặt tên gợi nhớ (`Điện thoại của Hội`) thay cho tên tự động.
+- Quản trị viên làm được điều tương tự cho **từng nhân viên**: `/admin/employees` → nút
+  **Thiết bị đang đăng nhập** ở cuối mỗi dòng (xem IP/vị trí, đăng xuất hoặc chặn máy lạ).
+
+Cách hoạt động: mỗi máy có cookie định danh `nch_device` (400 ngày, đặt tự động trong `proxy.ts` và
+**không bị xoá khi đăng xuất**) ghép với User-Agent thành **khoá thiết bị** (`sha256`, `src/lib/device.ts`).
+Khi đăng nhập, `authorize()` từ chối nếu khoá đó đang bị chặn, ngược lại ghi/cập nhật một dòng trong bảng
+`user_devices` (IP, vị trí, tên máy) và nhét id thiết bị vào JWT. Mọi request sau đó được
+`getActiveSessionUser()` đối chiếu lại: thiết bị đã bị đăng xuất từ xa hoặc bị chặn thì coi như **hết
+phiên** (trang chuyển về `/login`, API trả **401**). Vị trí tra qua `ipapi.co` (không cần khoá, chờ tối đa
+2.5 giây, tối đa 3 IP mỗi lần mở trang, nhớ tạm 6 giờ) — tra không được thì ghi “Không xác định được”,
+**không làm chậm hay hỏng trang**. Trang đăng nhập gọi `/api/device-status` nên khi bị chặn sẽ báo **đúng
+lý do** kèm tên máy, thay vì đổ lỗi cho mật khẩu. Kiểm chứng bằng `npm run check:devices` (có cả vòng đời
+thật trên CSDL: tạo → chặn → mở chặn → đăng xuất, rồi tự xoá sạch dữ liệu thử).
+
+> Nâng cấp: phiên tạo **trước** khi có tính năng này không kèm thông tin thiết bị nên sẽ phải **đăng nhập
+> lại một lần** để được quản lý.
+
 ### Dành cho quản trị viên (ADMIN)
 
 - **Dashboard (Tổng quan)**: 4 thẻ số liệu (tổng bài nhạc, tổng lượt nghe, người dùng, thời lượng nghe),
@@ -674,6 +705,11 @@ src/
 - **Mật khẩu** hash bằng bcrypt (12 rounds); đổi mật khẩu yêu cầu xác thực mật khẩu hiện tại.
 - **Tài khoản bị khoá** không thể đăng nhập và không thể thao tác dù session còn hiệu lực
   (`requireApiUser` xác thực lại với CSDL).
+- **Quản lý thiết bị**: mỗi phiên gắn với một thiết bị (cookie định danh `nch_device` + User-Agent,
+  băm `sha256`). Có thể **đăng xuất từ xa** từng thiết bị hoặc **chặn đăng nhập** một thiết bị (kể cả sau
+  khi đã đăng xuất, vì cookie định danh không bị xoá) — máy bị chặn chỉ vào được sau khi quản trị viên
+  **mở chặn**. Mọi request đều đối chiếu lại trạng thái thiết bị nên việc cắt phiên có hiệu lực ngay.
+  Xem `src/services/device.service.ts`, `src/lib/auth/guards.ts`, `npm run check:devices`.
 - **Chống SSRF**: endpoint `/api/metadata` chỉ cho phép danh sách tên miền hợp lệ
   (`youtube.com`, `youtu.be`, `soundcloud.com`, `tiktok.com`), chặn protocol khác và kiểm tra lại
   tên miền sau khi redirect.

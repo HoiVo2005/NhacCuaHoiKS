@@ -8,6 +8,8 @@ declare module "next-auth" {
       id: string;
       role: Role;
       avatarUrl?: string | null;
+      /** Id thiết bị đang dùng trong bảng `user_devices` (dùng để quản lý phiên) */
+      deviceId?: string | null;
     } & DefaultSession["user"];
   }
 
@@ -15,6 +17,7 @@ declare module "next-auth" {
     id?: string;
     role?: Role;
     avatarUrl?: string | null;
+    deviceId?: string | null;
   }
 }
 
@@ -23,5 +26,6 @@ declare module "next-auth/jwt" {
     id?: string;
     role?: Role;
     avatarUrl?: string | null;
+    deviceId?: string | null;
   }
 }

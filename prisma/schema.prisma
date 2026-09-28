@@ -40,6 +40,7 @@ model User {
   playlistItems PlaylistSong[] @relation("PlaylistItemAddedBy")
   favorites     Favorite[]
   history       ListenHistory[]
+  devices       UserDevice[]
 
   @@index([role])
   @@index([isActive])
@@ -234,4 +235,56 @@ model AppSetting {
   updatedAt DateTime @updatedAt
 
   @@map("app_settings")
+}
+
+/// Thiet bi / phien dang nhap cua nguoi dung.
+///
+/// Dung cho tinh nang "Quan ly thiet bi dang dang nhap":
+///  - Hien IP, ten may (suy ra tu User-Agent), vi tri (suy tu IP) va lan dung gan nhat.
+///  - Dang xuat TU XA tung thiet bi (`revokedAt`) hoac tat ca thiet bi.
+///  - CHAN dang nhap tu mot thiet bi (`blockedAt`): chi khi duoc "mo chan" thiet bi do
+///    moi dang nhap lai duoc -> dung khi mat dien thoai / may la.
+model UserDevice {
+  id     String @id @default(cuid())
+  userId String
+
+  /// Dau vet thiet bi: sha256(cookie thiet bi + User-Agent) - on dinh qua nhieu lan dang nhap
+  deviceKey String @db.VarChar(64)
+
+  /// Ten do nguoi dung tu dat (neu co) - uu tien hien thi thay cho ten tu dong
+  label String? @db.VarChar(100)
+
+  /// Ten tu dong nhan dien tu User-Agent (vi du "Chrome tren Windows")
+  deviceName String  @db.VarChar(120)
+  browser    String? @db.VarChar(60)
+  platform   String? @db.VarChar(60)
+  userAgent  String? @db.VarChar(500)
+
+  ipAddress String? @db.VarChar(60)
+  /// Dia diem suy ra tu IP (vi du "Ha Noi, Viet Nam")
+  location          String?   @db.VarChar(160)
+  /// Lan cuoi goi API tra cuu vi tri (tranh goi lai lien tuc khi IP khong doi)
+  locationUpdatedAt DateTime?
+
+  firstLoginAt DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+
+  /// Bi dang xuat tu xa: phien hien tai het hieu luc, thiet bi phai dang nhap lai
+  revokedAt      DateTime?
+  revokedByEmail String?   @db.VarChar(255)
+
+  /// Bi CHAN dang nhap: khong the dang nhap lai cho toi khi duoc mo chan
+  blockedAt      DateTime?
+  blockedByEmail String?   @db.VarChar(255)
+  blockedReason  String?   @db.VarChar(300)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, deviceKey])
+  @@index([userId, lastSeenAt])
+  @@index([blockedAt])
+  @@map("user_devices")
 }

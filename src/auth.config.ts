@@ -35,6 +35,8 @@ export const authConfig = {
         token.id = user.id;
         token.role = (user.role as Role) ?? "EMPLOYEE";
         token.avatarUrl = user.avatarUrl ?? null;
+        /* Thiết bị của phiên này (bảng `user_devices`) - xem `src/services/device.service.ts` */
+        token.deviceId = user.deviceId ?? null;
       }
 
       // Cho phep cap nhat lai ten/avatar trong token khi nguoi dung doi ho so
@@ -50,6 +52,7 @@ export const authConfig = {
         session.user.id = (token.id as string) ?? token.sub ?? "";
         session.user.role = (token.role as Role) ?? "EMPLOYEE";
         session.user.avatarUrl = (token.avatarUrl as string | null) ?? null;
+        session.user.deviceId = (token.deviceId as string | null) ?? null;
         if (token.name) session.user.name = token.name;
       }
       return session;

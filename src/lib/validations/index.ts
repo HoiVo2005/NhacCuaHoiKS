@@ -125,6 +125,31 @@ export const appSettingsSchema = z.object({
   announcement: optionalText(500),
 });
 
+/**
+ * Thao tác quản lý thiết bị đăng nhập:
+ *  - `revoke`        : đăng xuất từ xa một thiết bị
+ *  - `revoke-others` : đăng xuất mọi thiết bị khác (giữ thiết bị đang dùng)
+ *  - `revoke-all`    : đăng xuất tất cả (kể cả thiết bị đang dùng)
+ *  - `block`/`unblock`: chặn / mở chặn đăng nhập của một thiết bị
+ *  - `rename`        : đặt tên gợi nhớ cho thiết bị
+ */
+export const deviceCommandSchema = z
+  .object({
+    action: z.enum(["revoke", "revoke-others", "revoke-all", "block", "unblock", "rename"]),
+    deviceId: z.string().trim().min(1).max(100).optional(),
+    label: z.string().trim().max(100).optional().nullable(),
+    reason: z.string().trim().max(300).optional().nullable(),
+  })
+  .refine(
+    (value) =>
+      value.action === "revoke-others" ||
+      value.action === "revoke-all" ||
+      Boolean(value.deviceId),
+    { message: "Thiếu thiết bị cần xử lý", path: ["deviceId"] },
+  );
+
+export type DeviceCommandInput = z.infer<typeof deviceCommandSchema>;
+
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateEmployeeInput = z.infer<typeof createEmployeeSchema>;
 export type UpdateEmployeeInput = z.infer<typeof updateEmployeeSchema>;

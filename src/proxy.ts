@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { auth } from "@/auth";
+import { createDeviceId, DEVICE_COOKIE, DEVICE_COOKIE_MAX_AGE, readCookie } from "@/lib/device";
 
 /** Cac trang ca nhan bat buoc dang nhap (khach chi xem duoc trang nghe nhac) */
 const PROTECTED_PAGES = [
@@ -25,6 +26,9 @@ function isProtectedPage(pathname: string): boolean {
 function isPublicApi(pathname: string, method: string): boolean {
   if (pathname.startsWith("/api/auth")) return true;
   if (pathname === "/api/health") return true;
+
+  /* Trang dang nhap can biet thiet bi/IP nay co bi CHAN khong va can duoc dat cookie dinh danh */
+  if (pathname === "/api/device-status") return true;
 
   /*
    * File nhac/anh trong storage noi bo: khach cung phai doc duoc.
@@ -55,6 +59,28 @@ function isPublicApi(pathname: string, method: string): boolean {
     pathname === "/api/playlists" ||
     /^\/api\/playlists\/[^/]+$/.test(pathname)
   );
+}
+
+/**
+ * Đặt cookie định danh thiết bị (`nch_device`) nếu request chưa có.
+ *
+ * Cookie này sống 400 ngày và KHÔNG bị xoá khi đăng xuất, nhờ vậy máy đã bị “chặn đăng nhập”
+ * vẫn được nhận ra ở lần đăng nhập sau (xem `src/lib/device.ts` + `src/services/device.service.ts`).
+ */
+function withDeviceCookie(request: NextRequest, response: NextResponse): NextResponse {
+  if (readCookie(request.headers.get("cookie"), DEVICE_COOKIE)) return response;
+
+  response.cookies.set({
+    name: DEVICE_COOKIE,
+    value: createDeviceId(),
+    httpOnly: true,
+    sameSite: "lax",
+    path: "/",
+    maxAge: DEVICE_COOKIE_MAX_AGE,
+    secure: process.env.NODE_ENV === "production",
+  });
+
+  return response;
 }
 
 /**
@@ -90,7 +116,12 @@ export const proxy = auth((request) => {
     }
 
     // Khach duoc xem trang dang nhap va tat ca trang cong khai
-    if (isLoginPage || !isProtectedPage(pathname)) {
+    if (isLoginPage) {
+      /* Vao trang dang nhap: dat cookie dinh danh thiet bi truoc khi nguoi dung bam dang nhap */
+      return withDeviceCookie(request, NextResponse.next());
+    }
+
+    if (!isProtectedPage(pathname)) {
       return NextResponse.next();
     }
 
