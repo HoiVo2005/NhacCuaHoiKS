@@ -49,6 +49,11 @@ export async function GET() {
       database: "connected",
       databaseName: rows[0]?.db ?? null,
       databaseLogin: rows[0]?.login_name ?? null,
+      /*
+       * Bản đang chạy: Render cấp biến RENDER_GIT_COMMIT -> nhìn health là biết deploy nào đang sống
+       * (kể cả khi deploy mới lỗi và Render vẫn giữ bản cũ).
+       */
+      commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? "local",
       latencyMs: Date.now() - startedAt,
       timestamp: new Date().toISOString(),
     });
@@ -59,6 +64,7 @@ export async function GET() {
       {
         status: "error",
         database: "disconnected",
+        commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? "local",
         message: error instanceof Error ? error.message : "Unknown error",
         timestamp: new Date().toISOString(),
       },

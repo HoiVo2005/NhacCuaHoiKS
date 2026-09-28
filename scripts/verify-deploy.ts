@@ -90,6 +90,11 @@ check(
 );
 
 check(
+  "Health bao ban dang chay (RENDER_GIT_COMMIT) de kiem tra duoc deploy nao dang song",
+  read("src/app/api/health/route.ts").includes("RENDER_GIT_COMMIT"),
+);
+
+check(
   "Khong con cho nao migrate qua pooler theo kieu cu",
   !dockerfile.includes("prisma migrate deploy && next start") &&
     !renderYaml.includes("&& npx prisma migrate deploy &&"),
