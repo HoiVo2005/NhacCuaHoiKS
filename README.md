@@ -525,6 +525,12 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 
 ## 5. Tài khoản mẫu (sau khi `npm run db:seed`)
 
+> **Không chạy seed?** CSDL trắng sẽ **không có tài khoản nào** — hãy tạo riêng một tài khoản quản trị:
+> ```bash
+> npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"
+> ```
+> Thêm `--dry-run` để kiểm tra tham số (email hợp lệ, mật khẩu ≥ 8 ký tự) mà không ghi vào CSDL.
+
 | Vai trò | Email | Mật khẩu |
 | --- | --- | --- |
 | Quản trị viên | `admin@mymusic.local` | `Admin@123456` |
@@ -655,7 +661,10 @@ Repo đã có sẵn **`render.yaml`** (Render Blueprint) nên các bước chỉ
    - `AUTH_URL` = `https://<tên-dịch-vụ>.onrender.com` (đổi lại sau khi gắn tên miền riêng)
 3. Bấm **Apply**. Build tự chạy: `npm ci` → `prisma generate` → **`prisma migrate deploy`** (tạo bảng trên
    Neon) → `next build`; sau đó `next start`. Health check dùng `/api/health`.
-4. **Nạp dữ liệu mẫu** (tuỳ chọn): Render → service → tab *Shell* → `npm run db:seed`.
+4. **Tạo tài khoản đăng nhập** — chọn một trong hai (chạy ở Render → service → tab *Shell*):
+   - **Có dữ liệu mẫu**: `npm run db:seed` → tạo admin `admin@mymusic.local / Admin@123456` + ~24 bài.
+   - **Thư viện trắng, tự thêm bài sau**: `npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"`
+     — **bắt buộc** làm bước này nếu không seed, vì CSDL trắng thì không có tài khoản nào để đăng nhập.
 5. **Gắn tên miền riêng**: Render → service → *Settings → Custom Domains* → nhập `nhac.congty.vn`, rồi tạo
    bản ghi DNS **CNAME** `nhac` → `<tên-dịch-vụ>.onrender.com` (dùng domain gốc thì thêm bản ghi `A`).
    Render tự cấp HTTPS. **Sau khi đổi tên miền phải cập nhật `AUTH_URL=https://nhac.congty.vn`** rồi
@@ -708,6 +717,7 @@ npm run lint          # ESLint (eslint-config-next)
 npm run build         # Build production (Next.js 16 + Turbopack)
 npm run db:studio     # Xem du lieu bang Prisma Studio
 npm run db:check      # Kiem tra ket noi PostgreSQL + liet ke bang + dem user
+npm run admin:create  # Tao tai khoan quan tri (khong can seed) - them --dry-run de kiem tra tham so
 npm run env:write     # Sinh lai file .env chuan (AUTH_SECRET ngau nhien)
 npm run smoke         # Smoke test API (chay khi server dang bat)
 npm run bench         # Do toc do cac trang chinh (chay khi server dang bat)
