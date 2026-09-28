@@ -24,8 +24,9 @@ RUN npm run build
 # --- Runtime ---
 FROM base AS runner
 ENV NODE_ENV=production
-ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# KHONG dat cung cong o day: cac nen tang (Render, Fly, Railway...) tu cap bien PORT va yeu cau
+# ung dung bind dung cong do. Cong 3000 chi la gia tri MAC DINH khi chay local (xem CMD).
 
 RUN apk add --no-cache libc6-compat curl
 
@@ -45,7 +46,8 @@ RUN mkdir -p /app/.data/uploads
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=5 \
-  CMD curl -fsS http://127.0.0.1:3000/api/health || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT:-3000}/api/health" || exit 1
 
-# Ap dung migration roi khoi dong Next.js o che do production
-CMD ["sh", "-c", "npx prisma migrate deploy && npx next start -p 3000 -H 0.0.0.0"]
+# Ap dung migration roi khoi dong Next.js o che do production.
+# `${PORT:-3000}`: dung cong do nen tang cap (Render = 10000), local thi mac dinh 3000.
+CMD ["sh", "-c", "npx prisma migrate deploy && npx next start -p ${PORT:-3000} -H 0.0.0.0"]
