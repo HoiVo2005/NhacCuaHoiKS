@@ -79,6 +79,15 @@ export function SleepTimerButton() {
   const handleOpenChange = useCallback((next: boolean) => {
     setOpen(next);
     setError(null);
+
+    /*
+     * Panel hen gio va panel "Danh sach phat" dat CUNG vi tri (goc duoi ben phai, ngay tren thanh phat).
+     * Neu hang cho dang mo ma nguoi dung bam nut hen gio thi panel hen gio nam DUOI panel hang cho
+     * (panel hang cho mount sau trong layout) -> nhin nhu nut khong hoat dong. Dong hang cho truoc.
+     */
+    if (next && usePlayerStore.getState().queueOpen) {
+      usePlayerStore.getState().toggleQueue();
+    }
   }, []);
 
   /** Tự chọn số phút bất kỳ (1–720): gõ số rồi Enter hoặc bấm “Hẹn” */

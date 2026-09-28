@@ -401,6 +401,11 @@ check(
     buttonSource.includes("Đóng"),
 );
 check(
+  "Mo hen gio thi dong 'Danh sach phat' (hai panel cung vi tri, khong de chong nhau)",
+  buttonSource.includes("usePlayerStore.getState().queueOpen") &&
+    buttonSource.includes("toggleQueue()"),
+);
+check(
   "Hook nhan dien mobile: matchMedia 640px + co gia tri cho SSR (khong lech hydration)",
   mobileHookSource.includes('export const MOBILE_MEDIA_QUERY = "(max-width: 639px)"') &&
     mobileHookSource.includes("useSyncExternalStore") &&
