@@ -34,7 +34,7 @@ function existingDatabaseUrl(file) {
 const databaseUrl =
   process.env.NEW_DATABASE_URL ||
   existingDatabaseUrl(target) ||
-  "sqlserver://localhost:1433;database=NhacCuaHoi;schema=dbo;user=YOUR_SQL_USER;password=YOUR_SQL_PASSWORD;encrypt=true;trustServerCertificate=true;connectTimeout=15";
+  "postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
 
 
 const authSecret = process.env.NEW_AUTH_SECRET || crypto.randomBytes(32).toString("hex");
@@ -73,8 +73,9 @@ const lines = [
   'NEXT_PUBLIC_APP_NAME="NhacCuaHoiKS"',
   "",
   "# --- Docker compose (tuy chon) ---",
-  "# BAT BUOC khi chay `docker compose up`: mat khau SA cua SQL Server trong container.",
-  'MSSQL_SA_PASSWORD="doi-chuoi-nay-truoc-khi-chay-docker"',
+  "# Chi can khi chay PostgreSQL ngay tren may (bo comment service `postgres` trong docker-compose.yml).",
+  'POSTGRES_USER="nhac"',
+  'POSTGRES_PASSWORD="doi-chuoi-nay-truoc-khi-chay-docker"',
   "",
 ];
 

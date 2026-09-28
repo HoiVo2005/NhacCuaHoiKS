@@ -10,7 +10,7 @@ export async function GET() {
 
   try {
     const rows = await prisma.$queryRaw<{ db: string; login_name: string }[]>`
-      SELECT DB_NAME() AS db, SUSER_SNAME() AS login_name
+      SELECT current_database() AS db, current_user AS login_name
     `;
 
     return NextResponse.json({

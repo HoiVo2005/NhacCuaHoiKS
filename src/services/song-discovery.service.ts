@@ -73,10 +73,11 @@ export async function quickSearch(term: string, userId?: string | null, limit = 
     prisma.song.findMany({
       where: {
         isPublished: true,
+        /* `mode: "insensitive"` bat buoc voi PostgreSQL - xem ghi chu o `song.service.ts` */
         OR: [
-          { title: { contains: keyword } },
-          { artist: { contains: keyword } },
-          { tags: { contains: keyword } },
+          { title: { contains: keyword, mode: "insensitive" } },
+          { artist: { contains: keyword, mode: "insensitive" } },
+          { tags: { contains: keyword, mode: "insensitive" } },
         ],
       },
       include: songInclude,
@@ -85,7 +86,7 @@ export async function quickSearch(term: string, userId?: string | null, limit = 
     }),
     prisma.playlist.findMany({
       where: {
-        name: { contains: keyword },
+        name: { contains: keyword, mode: "insensitive" },
         OR: [{ isPublic: true }, { ownerId: userId ?? "" }],
       },
       select: { id: true, name: true },

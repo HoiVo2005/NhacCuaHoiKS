@@ -1,41 +1,21 @@
 # =============================================================================
-# NhacCuaHoiKS - docker compose: SQL Server 2022 + Next.js app
+# NhacCuaHoiKS - docker compose: chay ung dung Next.js voi CSDL PostgreSQL
+# -----------------------------------------------------------------------------
+# Mac dinh dung Neon: dien DATABASE_URL (chuoi pooled) trong .env.
+# Muon chay PostgreSQL ngay tren may: bo comment service `postgres` ben duoi va doi
+# DATABASE_URL thanh: postgresql://nhac:matkhau@postgres:5432/nhaccuahoiks?sslmode=disable
+#
 # Su dung:  docker compose up -d --build
 # =============================================================================
 services:
-  sqlserver:
-    image: mcr.microsoft.com/mssql/server:2022-latest
-    container_name: nhaccuahoiks-sqlserver
-    environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Thieu MSSQL_SA_PASSWORD - hay dat trong file .env}"
-      MSSQL_PID: "Developer"
-    ports:
-      - "1433:1433"
-    volumes:
-      - sqlserver-data:/var/opt/mssql
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1",
-        ]
-      interval: 15s
-      timeout: 10s
-      retries: 12
-      start_period: 40s
-
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: nhaccuahoiks-app
-    depends_on:
-      sqlserver:
-        condition: service_healthy
     environment:
       NODE_ENV: production
-      DATABASE_URL: "sqlserver://sqlserver:1433;database=NhacCuaHoi;schema=dbo;user=sa;password=${MSSQL_SA_PASSWORD:?Thieu MSSQL_SA_PASSWORD - hay dat trong file .env};encrypt=true;trustServerCertificate=true;connectTimeout=30"
+      DATABASE_URL: "${DATABASE_URL:?Thieu DATABASE_URL - hay dat trong file .env}"
       AUTH_SECRET: "${AUTH_SECRET:?Thieu AUTH_SECRET - hay dat trong file .env}"
       AUTH_URL: "${AUTH_URL:-http://localhost:3000}"
       AUTH_TRUST_HOST: "true"
@@ -50,6 +30,28 @@ services:
     volumes:
       - app-uploads:/app/.data/uploads
 
+  # ---------------------------------------------------------------------------
+  # TUY CHON: PostgreSQL chay ngay tren may (khong can internet).
+  # Bo comment khoi nay neu ban khong dung Neon/CSDL tu xa. Nho khai bao
+  # POSTGRES_USER + POSTGRES_PASSWORD trong .env truoc khi chay.
+  # ---------------------------------------------------------------------------
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: nhaccuahoiks-postgres
+  #   environment:
+  #     POSTGRES_DB: nhaccuahoiks
+  #     POSTGRES_USER: "${POSTGRES_USER:?Thieu POSTGRES_USER - hay dat trong file .env}"
+  #     POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Thieu POSTGRES_PASSWORD - hay dat trong file .env}"
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres-data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d nhaccuahoiks"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 10
+
 volumes:
-  sqlserver-data:
   app-uploads:
+  # postgres-data:

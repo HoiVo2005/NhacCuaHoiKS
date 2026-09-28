@@ -4,7 +4,7 @@ Website nghe nhạc nội bộ dành cho doanh nghiệp: quản trị viên qu�
 nghe nhạc, tạo playlist, lưu yêu thích và theo dõi lịch sử nghe của mình.
 
 **Stack:** Next.js 16 (App Router) · TypeScript · Tailwind CSS v4 · shadcn/ui style · Prisma ORM 7 ·
-**Microsoft SQL Server** · Auth.js (NextAuth v5) · Zustand · Zod · Sonner.
+**PostgreSQL (Neon / Render Postgres)** · Auth.js (NextAuth v5) · Zustand · Zod · Sonner.
 
 ### Thương hiệu & logo
 
@@ -212,7 +212,7 @@ Quy ước áp dụng:
   - Nhịp kiểm tra 5 giây/lần nhưng **chỉ đọc trạng thái trong bộ nhớ** (không gọi API); luôn chỉ có **một**
     request `/api/history` đang bay (single-flight) nên không dồn hàng đợi vào server — trước đây mỗi lần
     play/pause (kể cả những lần trình phát tự báo khi chuyển bài hoặc tua) đều gửi thêm một request 0ms.
-  - Server bỏ qua lượt ghi khi không có gì mới (cùng vị trí) → bớt một vòng truy vấn SQL Server.
+  - Server bỏ qua lượt ghi khi không có gì mới (cùng vị trí) → bớt một vòng truy vấn CSDL.
   - Kiểm chứng bằng `npm run check:history`.
 - **Nghe tiếp từ chỗ dừng** (phát nốt chỗ đang nghe dở): mỗi bài được nhớ **một** vị trí, lưu trong
   `localStorage` (khoá `resume` của `src/store/player-store.ts`) nên mở lại trang vẫn nghe tiếp đúng chỗ.
@@ -439,7 +439,7 @@ không lấy được nhạc). Bạn có thể kiểm tra nhanh một link cụ 
 | --- | --- |
 | Node.js | ≥ 20.9 (khuyến nghị 22 hoặc 24) |
 | npm | ≥ 10 |
-| Microsoft SQL Server | 2019 / 2022 (hoặc Docker `mcr.microsoft.com/mssql/server:2022-latest`) |
+| PostgreSQL | 15+ (khuyến nghị **Neon** hoặc Render Postgres; hoặc Docker `postgres:16-alpine`) |
 | Hệ điều hành | Windows / Linux / macOS |
 
 ---
@@ -468,10 +468,10 @@ npm run dev                 # http://localhost:3000
 ## 4. Cấu hình `.env`
 
 ```ini
-# --- Database: Microsoft SQL Server ---
-# Dien login/mat khau SQL Server CUA MAY BAN vao .env (file .env khong duoc commit len git).
+# --- Database: PostgreSQL (Neon / Render Postgres) ---
+# Lay chuoi ket noi o Neon: Project -> Connection string -> chon "Pooled connection" (co "-pooler").
 # KHONG dat mat khau that vao README / .env.example vi day la file trong repo cong khai.
-DATABASE_URL="sqlserver://localhost:1433;database=NhacCuaHoi;schema=dbo;user=YOUR_SQL_USER;password=YOUR_SQL_PASSWORD;encrypt=true;trustServerCertificate=true;connectTimeout=15"
+DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 # --- Auth.js (NextAuth v5) ---
 AUTH_SECRET="<chuoi-ngau-nhien-64-ky-tu>"
@@ -500,28 +500,26 @@ NEXT_PUBLIC_APP_NAME="NhacCuaHoiKS"
 > Prisma 7 **không tự nạp file `.env`** cho CLI. Dự án đã xử lý bằng
 > `import "dotenv/config"` ở đầu `prisma.config.ts` (không cần làm gì thêm).
 
-### Tạo tài khoản SQL Server cho ứng dụng (Windows Authentication)
+### Tạo database PostgreSQL trên Neon
 
-```powershell
-# Tạo database + login cho ung dung (thay YOUR_STRONG_PASSWORD bằng mật khẩu riêng của bạn)
-sqlcmd -S localhost -E -Q "CREATE LOGIN nch_app WITH PASSWORD='YOUR_STRONG_PASSWORD', CHECK_POLICY=OFF;"
-sqlcmd -S localhost -E -Q "CREATE DATABASE NhacCuaHoi;"
-sqlcmd -S localhost -E -Q "ALTER SERVER ROLE dbcreator ADD MEMBER nch_app;"
-sqlcmd -S localhost -E -Q "ALTER AUTHORIZATION ON DATABASE::NhacCuaHoi TO nch_app;"
+1. Đăng nhập [neon.tech](https://neon.tech) → **New Project** (chọn region gần Việt Nam, ví dụ *Singapore*).
+2. Mở **Connection string** → chọn **Pooled connection** → sao chép chuỗi dạng
+   `postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
+3. Dán vào `DATABASE_URL` trong `.env`, rồi chạy:
+
+```bash
+npm run db:deploy    # tao bang theo prisma/migrations (baseline PostgreSQL)
+npm run db:seed      # du lieu mau (tuy chon)
+npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 ```
 
 > **Bảo mật:** repo này là công khai nên mọi mật khẩu trong README/`.env.example`/`docker-compose.yml`
 > đều chỉ là **giá trị mẫu**. Mật khẩu thật chỉ nằm trong `.env` (đã bị `.gitignore` chặn) hoặc trong
-> biến môi trường khi triển khai.
+> biến môi trường khi triển khai. Lưu ý `npm run env:write` **giữ nguyên `DATABASE_URL` đang có** trong
+> `.env`; muốn đổi CSDL thì truyền `NEW_DATABASE_URL` hoặc sửa tay file `.env`.
 
-> Sau đó cập nhật `DATABASE_URL` trong `.env` cho khớp tên database/login, rồi chạy
-> `npm run db:deploy` (áp dụng migration) và `npm run db:seed` (dữ liệu mẫu).
-> Có thể sinh lại `.env` chuẩn bằng `npm run env:write`.
->
-> Kiểm tra nhanh kết nối + danh sách bảng: `npm run db:check`.
-
-- Vai trò `dbcreator` cần thiết để Prisma Migrate tạo được *shadow database*.
-- Ở môi trường production, hãy dùng login riêng với quyền tối thiểu (không dùng `sa`).
+- Neon có **branch** giống Git: nên tạo một branch riêng cho dev để thử nghiệm mà không đụng dữ liệu thật.
+- Không cần quyền `sa`/quyền tạo database: tài khoản Neon đã là chủ database của project đó.
 
 ---
 
@@ -566,7 +564,7 @@ src/
   lib/
     api/                   # chuan hoa response + loi nghiep vu
     auth/                  # hash mat khau + guard phan quyen
-    db/                    # PrismaClient + parser chuoi ket noi SQL Server
+    db/                    # PrismaClient (driver adapter `pg` cho PostgreSQL)
     music/                 # adapter metadata (oEmbed/API chinh thuc)
     storage/               # local + S3/MinIO
     validations/           # schema Zod
@@ -642,10 +640,41 @@ src/
 
 ---
 
-## 9. Docker & triển khai
+## 9. Triển khai
+
+### 9.1. Render + Neon (khuyến nghị)
+
+Repo đã có sẵn **`render.yaml`** (Render Blueprint) nên các bước chỉ còn là tạo CSDL và bấm deploy:
+
+1. **Tạo database trên Neon**: đăng nhập [neon.tech](https://neon.tech) → *New Project* (chọn region gần
+   Việt Nam, ví dụ *Singapore*) → mở **Connection string**, chọn **Pooled connection** → sao chép chuỗi
+   `postgresql://...@ep-xxx-pooler....neon.tech/neondb?sslmode=require`.
+2. **Tạo web service trên Render**: *New +* → **Blueprint** → chọn repo này → Render đọc `render.yaml` và
+   hỏi 2 biến (2 biến còn lại tự sinh/nội bộ):
+   - `DATABASE_URL` = chuỗi Neon vừa sao chép
+   - `AUTH_URL` = `https://<tên-dịch-vụ>.onrender.com` (đổi lại sau khi gắn tên miền riêng)
+3. Bấm **Apply**. Build tự chạy: `npm ci` → `prisma generate` → **`prisma migrate deploy`** (tạo bảng trên
+   Neon) → `next build`; sau đó `next start`. Health check dùng `/api/health`.
+4. **Nạp dữ liệu mẫu** (tuỳ chọn): Render → service → tab *Shell* → `npm run db:seed`.
+5. **Gắn tên miền riêng**: Render → service → *Settings → Custom Domains* → nhập `nhac.congty.vn`, rồi tạo
+   bản ghi DNS **CNAME** `nhac` → `<tên-dịch-vụ>.onrender.com` (dùng domain gốc thì thêm bản ghi `A`).
+   Render tự cấp HTTPS. **Sau khi đổi tên miền phải cập nhật `AUTH_URL=https://nhac.congty.vn`** rồi
+   deploy lại — sai `AUTH_URL` là cookie đăng nhập gắn nhầm tên miền và người dùng bị đá ra liên tục.
+
+Lưu ý của gói miễn phí (đã tính sẵn trong thiết kế):
+
+- Render free **ngủ sau ~15 phút** không có truy cập → lần mở đầu chậm 30–60 giây; `/api/health` là điểm
+  để dịch vụ ping giữ ấm nếu bạn cần.
+- **Ổ đĩa là tạm thời**: bật `STORAGE_DRIVER=local` thì bài tải lên sẽ **mất mỗi lần deploy**. Muốn giữ
+  file: đặt `STORAGE_DRIVER=s3` + các biến `S3_*` (Cloudflare R2 / MinIO / AWS S3 — driver đã có sẵn trong
+  `src/lib/storage/s3.ts`), hoặc gắn **Render Disk** (chỉ có ở gói trả phí).
+- Neon free tự "ngủ" khi không dùng → request đầu tiên có thể chậm thêm ~1 giây. Nên tạo **một branch**
+  riêng cho dev trên cùng project Neon để dev/prod tách dữ liệu mà vẫn một chỗ quản lý.
+
+### 9.2. Docker (self-host)
 
 ```bash
-# Chay SQL Server 2022 + ung dung (tu dong migration khi khoi dong)
+# Chay ung dung (CSDL la Neon: dien DATABASE_URL trong .env)
 docker compose up -d --build
 
 # Xem log
@@ -655,14 +684,10 @@ docker compose logs -f app
 docker compose exec app npx prisma db seed
 ```
 
-Biến `MSSQL_SA_PASSWORD` và `AUTH_SECRET` **bắt buộc** đặt qua file `.env` (hoặc biến môi trường khi deploy);
-`docker-compose.yml` cố ý **không dùng mật khẩu mặc định** — thiếu biến là compose báo lỗi và dừng ngay.
-Ví dụ trong `.env`:
-
-```ini
-MSSQL_SA_PASSWORD="mat-khau-rieng-cua-ban"
-AUTH_SECRET="chuoi-ngau-nhien-64-ky-tu"
-```
+Biến `DATABASE_URL` và `AUTH_SECRET` **bắt buộc** đặt qua file `.env` (hoặc biến môi trường khi deploy);
+`docker-compose.yml` cố ý **không dùng giá trị mặc định** — thiếu biến là compose báo lỗi và dừng ngay.
+Muốn chạy PostgreSQL ngay trên máy thay vì Neon thì bỏ comment service `postgres` trong
+`docker-compose.yml` và khai báo `POSTGRES_USER` / `POSTGRES_PASSWORD` trong `.env`.
 
 Build production không dùng Docker (self-host):
 
@@ -682,7 +707,7 @@ npm run typecheck     # TypeScript nghiem ngat, khong emit
 npm run lint          # ESLint (eslint-config-next)
 npm run build         # Build production (Next.js 16 + Turbopack)
 npm run db:studio     # Xem du lieu bang Prisma Studio
-npm run db:check      # Kiem tra ket noi SQL Server + liet ke bang + dem user
+npm run db:check      # Kiem tra ket noi PostgreSQL + liet ke bang + dem user
 npm run env:write     # Sinh lai file .env chuan (AUTH_SECRET ngau nhien)
 npm run smoke         # Smoke test API (chay khi server dang bat)
 npm run bench         # Do toc do cac trang chinh (chay khi server dang bat)
@@ -710,6 +735,7 @@ npm run check:lyrics  # Test loi bai hat (doc LRC, dong dang hat, cache CSDL, tr
 npm run check:thumbs  # Test anh bia net (nang cap maxresdefault/t500x500, tu ha cap khi anh loi)
 npm run check:resume  # Test "Nghe tiep tu cho dung" (nguong nho, buoc 5 giay, chay tren store that)
 npm run check:media   # Test Media Session (thong tin + anh bia net, nut tren man hinh khoa, thanh thoi gian)
+npm run check:search  # Test tim kiem khong phan biet hoa/thuong (PostgreSQL) + email dang nhap
 npm run check:youtube # Test dong co YouTube (khong can server, khong can trinh duyet)
 ```
 
@@ -754,10 +780,13 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 
 | Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |
 | --- | --- | --- |
-| `Thiếu biến môi trường DATABASE_URL` | Chưa tạo `.env` | Sao chép `.env.example` → `.env` |
-| `Could not connect to server` / timeout | SQL Server chưa bật TCP hoặc sai port | Bật TCP/IP trong SQL Server Configuration Manager, kiểm tra `netstat -ano \| findstr 1433` |
-| `Login failed for user` | Sai mật khẩu hoặc chưa bật Mixed Mode | Đổi mật khẩu login, kiểm tra registry `LoginMode = 2` rồi khởi động lại dịch vụ |
-| Migration báo lỗi *shadow database* | Login thiếu quyền tạo database | `ALTER SERVER ROLE dbcreator ADD MEMBER <login>;` |
+| `Thiếu biến môi trường DATABASE_URL` | Chưa tạo `.env` | Sao chép `.env.example` → `.env` rồi dán chuỗi kết nối Neon |
+| `ECONNREFUSED` / timeout khi kết nối CSDL | Sai host/port, mạng chặn 5432, hoặc Neon đang "ngủ" | Kiểm tra chuỗi kết nối (phải có `-pooler` và `sslmode=require`), rồi chạy `npm run db:check` |
+| `password authentication failed` | Sai mật khẩu trong `DATABASE_URL` | Neon → *Reset password* → dán lại chuỗi mới vào `.env` (lưu ý `npm run env:write` giữ nguyên `DATABASE_URL` cũ) |
+| `SSL required` / `no pg_hba.conf entry` | Thiếu `?sslmode=require` | Thêm `?sslmode=require` vào cuối `DATABASE_URL` |
+| Tìm kiếm gõ đúng mà không ra bài | Thiếu `mode: "insensitive"` — PostgreSQL phân biệt hoa/thường | Giữ `mode: "insensitive"` ở `song.service.ts` / `song-discovery.service.ts` (xem mục 12) |
+| Bài tải lên biến mất sau khi deploy Render | Ổ đĩa của gói free là tạm thời | Chuyển `STORAGE_DRIVER=s3` (+ các biến `S3_*`) hoặc gắn Render Disk |
+| Đăng nhập chạy ở localhost nhưng lỗi trên tên miền | `AUTH_URL` chưa khớp tên miền thật | Đặt `AUTH_URL=https://<tên miền>`, `AUTH_USE_SECURE_COOKIES=true` rồi deploy lại |
 | Không lấy được metadata YouTube | Video bị giới hạn/không tồn tại | Nhập tay thông tin bài nhạc; kiểm tra mạng và host allowlist |
 | SoundCloud báo *“Không tìm thấy bài nhạc này”* | Link đã bị xoá / đổi đường dẫn / đặt riêng tư | Dán lại link từ trang SoundCloud đang mở được; kiểm tra bằng `npm run metadata:check <url>` |
 | SoundCloud thiếu thời lượng | Chưa có thời lượng trong dữ liệu công khai | Bấm **“Bổ sung thông tin từ SoundCloud”**, hoặc để hệ thống tự cập nhật khi phát lần đầu (thời lượng thật do Widget API báo về). **Không cần API key.** |
@@ -784,13 +813,21 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 
 - **Next.js 16**: `middleware.ts` đã được đổi tên thành `proxy.ts`; dự án dùng `proxy.ts`
   (`src/proxy.ts`) để gác quyền truy cập.
-- **Prisma 7 + SQL Server**: driver adapter `@prisma/adapter-mssql` (thuần JavaScript, không cần Rust
-  engine). Chuỗi kết nối dạng `sqlserver://...` được parser trong `src/lib/db/connection.ts` sang cấu
-  hình `mssql`.
-- **SQL Server không hỗ trợ enum/Json trong Prisma**: các trường `role`, `sourceType`, `playbackType`
-  dùng `String` + union type TypeScript (`ADMIN | EMPLOYEE`, `YOUTUBE | SOUNDCLOUD | TIKTOK | UPLOADED`),
-  và được validate bằng Zod. Không dùng `@@unique` trên cột có thể NULL (giới hạn unique index của
-  SQL Server).
+- **Prisma 7 + PostgreSQL (Neon)**: driver adapter `@prisma/adapter-pg` (thuần JavaScript, không cần Rust
+  engine) dùng chuỗi `postgresql://` chuẩn; client khởi tạo ở `src/lib/db/prisma.ts` với pool `max: 5`
+  để không vượt hạn mức kết nối của Neon free (nên dùng chuỗi **pooled** của Neon).
+- **Vì sao không dùng enum/Json/scalar list**: các trường `role`, `sourceType`, `playbackType` dùng
+  `String` + union type TypeScript (`ADMIN | EMPLOYEE`, `YOUTUBE | SOUNDCLOUD | TIKTOK | UPLOADED`) và
+  validate bằng Zod; `tags` lưu CSV. Thiết kế này giữ nguyên từ bản SQL Server nên **tầng nghiệp vụ không
+  phải sửa** khi đổi CSDL.
+- **PostgreSQL PHÂN BIỆT hoa/thường** (SQL Server thì không): mọi truy vấn `contains` phải kèm
+  `mode: "insensitive"` (xem `src/services/song.service.ts`, `src/services/song-discovery.service.ts`),
+  còn email đăng nhập đã được `toLowerCase()` trước khi tra cứu (`src/auth.ts`,
+  `src/services/user.service.ts`).
+- **Native type**: chuỗi có giới hạn dùng `@db.VarChar(n)`, nội dung dài dùng `@db.Text`
+  (trước đây là `@db.NVarChar(n)` / `@db.NVarChar(Max)` của SQL Server).
+- **Chuyển CSDL**: dự án đã chuyển từ SQL Server sang PostgreSQL; `prisma/migrations` nay chỉ còn baseline
+  `20260928100000_init_postgres` tạo toàn bộ bảng/index/khoá ngoại từ đầu.
 - **Thời lượng bài hát — luôn lấy đúng, không cần API key**:
   - YouTube: đọc `lengthSeconds` từ trang xem video (không cần key); nếu có `YOUTUBE_API_KEY` thì dùng
     Data API v3 chính xác hơn. Khi phát, IFrame Player API báo lại thời lượng thật.
@@ -811,17 +848,18 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 
 ### Tối ưu tốc độ tải trang
 
-Sau khi đo (`npm run bench`), nút thắt là **số lượt truy vấn SQL Server cho mỗi trang** (mỗi lượt ~25–30ms),
-nên các tối ưu tập trung vào việc giảm số lượt và giữ kết nối luôn ấm:
+Sau khi đo (`npm run bench`), nút thắt là **số lượt truy vấn CSDL cho mỗi trang** (mỗi lượt ~25–30ms trên
+SQL Server cũ; PostgreSQL/Neon thường 5–15ms), nên các tối ưu tập trung vào việc giảm số lượt và giữ kết nối
+luôn ấm:
 
 - **Yêu thích dùng chung một truy vấn/request**: `getFavoriteIdSet()` được cache bằng React `cache()` —
   trước đây mỗi danh sách (nhạc mới, nghe nhiều, nghe tiếp…) tự truy vấn favorites riêng.
 - **Session giải mã một lần/request**: `getSessionUser()` bọc `cache()` vì layout gốc + layout khu + trang
   đều gọi hàm này.
 - **Dashboard quản trị**: gộp truy vấn “top người nghe” vào `Promise.all` và tính tổng bằng `groupBy`
-  (`_sum.msPlayed`) ngay trên SQL Server thay vì kéo toàn bộ lịch sử của người dùng về Node.
-- **Pool kết nối SQL Server**: `min: 2` + `idleTimeoutMillis: 300s` → request đầu tiên sau khi rảnh rỗi
-  không phải đăng nhập lại vào SQL Server.
+  (`_sum.msPlayed`) ngay trên CSDL thay vì kéo toàn bộ lịch sử của người dùng về Node.
+- **Pool kết nối**: `max: 5` + `idleTimeoutMillis: 30s` trong `src/lib/db/prisma.ts` → giữ kết nối ấm mà
+  vẫn nằm trong hạn mức của Neon free; nên dùng chuỗi **pooled** của Neon để nhiều tiến trình dùng chung.
 - **Khung xương khi chuyển trang**: `src/app/music/loading.tsx` và `src/app/admin/loading.tsx`
   (`<PageSkeleton />`) hiện ngay lập tức trong lúc server lấy dữ liệu.
 - **Trang chủ gọn hơn**: 8 bài mới + 6 bài nghe nhiều + 4 playlist nổi bật (giảm dung lượng HTML/RSC).

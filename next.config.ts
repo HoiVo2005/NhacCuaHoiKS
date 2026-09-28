@@ -1,8 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cac package chi chay tren server (SQL Server driver) khong bundle bang Turbopack
-  serverExternalPackages: ["mssql", "tedious", "@prisma/adapter-mssql"],
+  // Cac package chi chay tren server (driver PostgreSQL) khong bundle bang Turbopack
+  serverExternalPackages: ["pg", "@prisma/adapter-pg"],
 
   // An hoan toan nut Dev Tools Indicator (chu "N") o goc man hinh khi chay next dev.
   // Loi compile/runtime van hien thi binh thuong.

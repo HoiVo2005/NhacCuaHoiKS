@@ -14,6 +14,16 @@ export const songInclude = {
   createdBy: { select: { id: true, name: true } },
 };
 
+/**
+ * Chế độ so sánh chuỗi cho MỌI truy vấn `contains`.
+ *
+ * PostgreSQL **phân biệt hoa/thường** (SQL Server thì không), nên thiếu `mode: "insensitive"` là
+ * người dùng gõ "nhac" sẽ không tìm thấy "Nhạc" — đây là khác biệt hành vi quan trọng nhất khi
+ * chuyển CSDL. Khai báo thành hằng số `as const` để TypeScript giữ đúng kiểu `QueryMode`
+ * (viết thẳng trong object `where` khai báo rời sẽ bị suy rộng thành `string`).
+ */
+const CASE_INSENSITIVE = "insensitive" as const;
+
 export interface SongListResult {
   items: SongDTO[];
   total: number;
@@ -57,12 +67,17 @@ export async function listSongs(
     ...(genre ? { genre: { slug: genre } } : {}),
     ...(q
       ? {
+          /*
+           * `mode: CASE_INSENSITIVE` la BAT BUOC voi PostgreSQL: SQL Server so sanh chuoi khong
+           * phan biet hoa/thuong (collation mac dinh) nen truoc day go "nhac" van ra "Nhạc";
+           * PostgreSQL thi PHAN BIET, thieu `mode` la nguoi dung tim khong ra bai.
+           */
           OR: [
-            { title: { contains: q } },
-            { artist: { contains: q } },
-            { album: { contains: q } },
-            { tags: { contains: q } },
-            { genre: { name: { contains: q } } },
+            { title: { contains: q, mode: CASE_INSENSITIVE } },
+            { artist: { contains: q, mode: CASE_INSENSITIVE } },
+            { album: { contains: q, mode: CASE_INSENSITIVE } },
+            { tags: { contains: q, mode: CASE_INSENSITIVE } },
+            { genre: { name: { contains: q, mode: CASE_INSENSITIVE } } },
           ],
         }
       : {}),

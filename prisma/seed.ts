@@ -1,10 +1,9 @@
 import "dotenv/config";
 
 import bcrypt from "bcryptjs";
-import { PrismaMssql } from "@prisma/adapter-mssql";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "../src/generated/prisma/client";
-import { parseSqlServerUrl } from "../src/lib/db/connection";
 
 /**
  * Seed du lieu mau cho NhacCuaHoiKS.
@@ -12,7 +11,7 @@ import { parseSqlServerUrl } from "../src/lib/db/connection";
  */
 
 const prisma = new PrismaClient({
-  adapter: new PrismaMssql(parseSqlServerUrl(process.env.DATABASE_URL ?? ""), { schema: "dbo" }),
+  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL ?? "" }),
 });
 
 interface SeedSong {

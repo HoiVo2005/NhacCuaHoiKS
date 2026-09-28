@@ -1,0 +1,84 @@
+# =============================================================================
+# Render Blueprint - NhacCuaHoiKS (Next.js + PostgreSQL/Neon)
+# -----------------------------------------------------------------------------
+# Cach dung:
+#   1. Dang nhap render.com -> New + -> Blueprint -> chon repo nay (render.yaml o goc).
+#   2. Render se hoi 2 bien bi mat (DATABASE_URL, AUTH_URL) - dan gia tri vao:
+#        DATABASE_URL = chuoi ket noi POOLED cua Neon (co "-pooler", nho ?sslmode=require)
+#        AUTH_URL     = https://<ten-dich-vu>.onrender.com  (hoac ten mien rieng)
+#   3. AUTH_SECRET do Render tu sinh (generateValue) - khong can nhap.
+# =============================================================================
+services:
+  - type: web
+    name: nhaccuahoiks
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeploy: true
+    # `prisma generate` la BAT BUOC: thu muc src/generated/ khong duoc commit len git.
+    # `prisma migrate deploy` tao/ cap nhat bang tren Neon theo prisma/migrations.
+    buildCommand: npm ci && npx prisma generate && npx prisma migrate deploy && npm run build
+    startCommand: npm run start -- -p $PORT
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: NEXT_TELEMETRY_DISABLED
+        value: "1"
+
+      # --- Database (Neon) ---
+      # Chuoi ket noi pooled: postgresql://user:pass@ep-xxx-pooler.<region>.aws.neon.tech/db?sslmode=require
+      - key: DATABASE_URL
+        sync: false
+
+      # --- Auth.js ---
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_URL
+        sync: false
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      # HTTPS -> cookie phai la __Secure- (xem src/auth.config.ts)
+      - key: AUTH_USE_SECURE_COOKIES
+        value: "true"
+
+      # --- Giao dien ---
+      - key: NEXT_PUBLIC_APP_NAME
+        value: NhacCuaHoiKS
+
+      # --- Storage cho file upload ---
+      # LUU Y: o dia cua Render la TAM THOI - file upload se mat moi lan deploy lai.
+      #  - Chi dung "local" khi thu nghiem (bai demo).
+      #  - Muon giu file: doi STORAGE_DRIVER=s3 va dien S3_* ben duoi (hoac gan Render Disk,
+      #    chi co o goi tra phi: disk.mountPath = /opt/render/project/src/.data/uploads).
+      - key: STORAGE_DRIVER
+        value: local
+      - key: STORAGE_LOCAL_DIR
+        value: .data/uploads
+      - key: STORAGE_PUBLIC_PREFIX
+        value: /api/files
+      - key: UPLOAD_MAX_BYTES
+        value: "52428800"
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+
+      # --- Tuy chon: metadata YouTube/SoundCloud ---
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: SOUNDCLOUD_CLIENT_ID
+        sync: false
+      - key: METADATA_TIMEOUT_MS
+        value: "8000"

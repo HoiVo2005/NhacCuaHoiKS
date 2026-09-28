@@ -1,5 +1,5 @@
 # =============================================================================
-# MyMusic - Dockerfile (Next.js 16 standalone + Prisma 7 / SQL Server)
+# MyMusic - Dockerfile (Next.js 16 standalone + Prisma 7 / PostgreSQL)
 # =============================================================================
 FROM node:22-alpine AS base
 WORKDIR /app
@@ -17,7 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Prisma generate chi can schema, khong can ket noi that (gia tri duoi day chi de build)
-ENV DATABASE_URL="sqlserver://localhost:1433;database=MyMusic;user=sa;password=BuildOnlyNoSecret;encrypt=true;trustServerCertificate=true"
+ENV DATABASE_URL="postgresql://build:build@localhost:5432/build?sslmode=disable"
 RUN npx prisma generate
 RUN npm run build
 
