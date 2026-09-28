@@ -62,23 +62,33 @@ services:
         value: /api/files
       - key: UPLOAD_MAX_BYTES
         value: "52428800"
+      # S3: chi can dien khi doi STORAGE_DRIVER sang "s3" (xem ghi chu o tren)
       - key: S3_ENDPOINT
-        sync: false
+        value: ""
       - key: S3_REGION
-        sync: false
+        value: ""
       - key: S3_BUCKET
-        sync: false
+        value: ""
       - key: S3_ACCESS_KEY_ID
-        sync: false
+        value: ""
       - key: S3_SECRET_ACCESS_KEY
-        sync: false
+        value: ""
       - key: S3_PUBLIC_BASE_URL
-        sync: false
+        value: ""
 
       # --- Tuy chon: metadata YouTube/SoundCloud ---
+      # De trong = khong dung API (van lay duoc metadata qua oEmbed/hydration nhu binh thuong).
+      # Dien sau trong dashboard Render neu can.
       - key: YOUTUBE_API_KEY
-        sync: false
+        value: ""
       - key: SOUNDCLOUD_CLIENT_ID
-        sync: false
+        value: ""
       - key: METADATA_TIMEOUT_MS
         value: "8000"
+
+    # --- TUY CHON cho goi tra phi: giu file upload qua cac lan deploy ---
+    # Bo comment khoi nay (va doi STORAGE_DRIVER=local thanh gia tri duoi day) neu muon giu file:
+    # disk:
+    #   name: uploads
+    #   mountPath: /opt/render/project/src/.data/uploads
+    #   sizeGB: 1
