@@ -1,0 +1,88 @@
+import type { Metadata, Viewport } from "next";
+
+import { SessionProvider } from "@/components/auth/session-context";
+import { ThemeProvider } from "@/components/theme-provider";
+import { ConfirmProvider } from "@/components/ui/confirm-dialog";
+import { FullPlayer } from "@/components/player/full-player";
+import { MediaSessionBridge } from "@/components/player/media-session-bridge";
+import { PlayerBar } from "@/components/player/player-bar";
+import { PlayerEngine } from "@/components/player/player-engine";
+import { PlayerShortcuts } from "@/components/player/player-shortcuts";
+import { QueuePanel } from "@/components/player/queue-panel";
+import { ResumeTracker } from "@/components/player/resume-tracker";
+import { Toaster } from "@/components/ui/toaster";
+import { getSessionUser } from "@/lib/auth/guards";
+import { APP_NAME } from "@/lib/constants";
+
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: {
+    default: `${APP_NAME} - Thư viện nhạc nội bộ`,
+    template: `%s · ${APP_NAME}`,
+  },
+  description:
+    "NhacCuaHoiKS - hệ thống nghe nhạc nội bộ dành cho doanh nghiệp: thư viện nhạc tập trung, playlist, yêu thích và lịch sử nghe.",
+  applicationName: APP_NAME,
+  icons: {
+    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    shortcut: ["/logo.svg"],
+    apple: [{ url: "/logo.svg" }],
+  },
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport: Viewport = {
+  /*
+   * Mau thanh trinh duyet tren dien thoai (theme-color):
+   * - Ban sang dung mau nen giao dien sang, ban toi dung mau nen toi (theo `prefers-color-scheme`).
+   * Truoc day luon de mau toi nen tren giao dien sang, thanh trinh duyet bi le mau.
+   */
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fc" },
+    { media: "(prefers-color-scheme: dark)", color: "#070b16" },
+  ],
+  width: "device-width",
+  initialScale: 1,
+};
+
+export default async function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  // Khach (chua dang nhap) van xem/nghe nhac duoc; session chi dung de hien thi dung giao dien
+  const user = await getSessionUser();
+
+  return (
+    <html lang="vi" suppressHydrationWarning>
+      {/*
+        suppressHydrationWarning:
+        - next-themes dat class `dark` truoc khi React hydrate (chong nhay mau)
+        - mot so tien ich/extension trinh duyet tu them thuoc tinh vao <body> (cz-shortcut-listen)
+        Day khong phai loi cua ung dung nen chi bo qua canh bao cho <html>/<body>.
+      */}
+      <body className="min-h-screen antialiased" suppressHydrationWarning>
+        <ThemeProvider>
+          <SessionProvider user={user}>
+            <ConfirmProvider>
+              {children}
+
+              {/* Trinh phat nhac toan cuc: chi mount mot lan cho ca ung dung */}
+              <PlayerEngine />
+              {/* Dieu khien tu khoa man hinh / tai nghe (Media Session API) */}
+              <MediaSessionBridge />
+              {/* Ghi nho vi tri dang nghe de lan sau nghe tiep dung cho */}
+              <ResumeTracker />
+              <PlayerBar />
+              <PlayerShortcuts />
+              <QueuePanel />
+              <FullPlayer />
+              <Toaster />
+            </ConfirmProvider>
+          </SessionProvider>
+        </ThemeProvider>
+      </body>
+    </html>
+  );
+}

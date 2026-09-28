@@ -1,0 +1,236 @@
+// =============================================================================
+// NhacCuaHoiKS - Prisma schema cho Microsoft SQL Server
+// =============================================================================
+// LUU Y QUAN TRONG (gioi han cua SQL Server trong Prisma):
+//  - SQL Server KHONG ho tro `enum` trong Prisma => dung String + union type o tang TS.
+//  - SQL Server KHONG ho tro `Json` => dung String (CSV / JSON string) khi can.
+//  - SQL Server KHONG ho tro scalar list (String[]) => dung bang trung gian.
+//  - SQL Server chi cho phep 1 gia tri NULL tren moi rang buoc UNIQUE (unique index),
+//    vi vay khong dat @@unique tren cot co the NULL (vi du sourceId cua bai upload).
+//  - Cac quan he tro ve User deu dung NoAction de tranh loi "multiple cascade paths".
+// =============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+/// Nguoi dung he thong: ADMIN (quan tri) va EMPLOYEE (nhan vien)
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique @db.NVarChar(255)
+  name         String    @db.NVarChar(200)
+  passwordHash String    @db.NVarChar(255)
+  /// ADMIN | EMPLOYEE
+  role         String    @default("EMPLOYEE") @db.NVarChar(20)
+  avatarUrl    String?   @db.NVarChar(500)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  createdSongs  Song[]         @relation("SongCreatedBy")
+  updatedSongs  Song[]         @relation("SongUpdatedBy")
+  playlists     Playlist[]     @relation("PlaylistOwner")
+  playlistItems PlaylistSong[] @relation("PlaylistItemAddedBy")
+  favorites     Favorite[]
+  history       ListenHistory[]
+
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+/// The loai nhac
+model Genre {
+  id          String   @id @default(cuid())
+  name        String   @unique @db.NVarChar(100)
+  slug        String   @unique @db.NVarChar(120)
+  description String?  @db.NVarChar(500)
+  /// Mau hien thi tren UI (dang hex, vi du #22d3ee)
+  color       String?  @db.NVarChar(20)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  songs Song[]
+
+  @@map("genres")
+}
+
+/// Bai nhac trong thu vien (YouTube / SoundCloud / TikTok / file upload)
+model Song {
+  id              String  @id @default(cuid())
+  title           String  @db.NVarChar(300)
+  artist          String? @db.NVarChar(200)
+  album           String? @db.NVarChar(200)
+  description     String? @db.NVarChar(Max)
+  /// 0 = chua biet (se duoc cap nhat khi phat nhac)
+  durationSeconds Int     @default(0)
+  thumbnailUrl    String? @db.NVarChar(1000)
+
+  /// YOUTUBE | SOUNDCLOUD | TIKTOK | UPLOADED
+  sourceType String  @db.NVarChar(20)
+  /// ID tren nen tang goc (videoId / trackId / postId)
+  sourceId   String? @db.NVarChar(200)
+  /// URL goc do quan tri vien dan vao
+  sourceUrl  String? @db.NVarChar(1000)
+  /// URL phat truc tiep (chi voi bai UPLOADED)
+  streamUrl  String? @db.NVarChar(1000)
+  /// URL nhung iframe chinh thuc (YouTube/SoundCloud/TikTok)
+  embedUrl   String? @db.NVarChar(1000)
+  /// EMBED | DIRECT
+  playbackType String @default("EMBED") @db.NVarChar(20)
+
+  /// Thong tin file (chi voi bai UPLOADED)
+  mimeType      String? @db.NVarChar(100)
+  fileSizeBytes Int?
+  /// Duong dan tuong doi trong storage (chi voi bai UPLOADED)
+  storageKey String? @db.NVarChar(500)
+
+  /// Danh sach tag phan cach bang dau phay
+  tags String? @db.NVarChar(500)
+
+  genreId String?
+  genre   Genre?  @relation(fields: [genreId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  isPublished Boolean @default(true)
+  playCount   Int     @default(0)
+
+  createdById String?
+  createdBy   User?   @relation("SongCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updatedById String?
+  updatedBy   User?   @relation("SongUpdatedBy", fields: [updatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  playlistItems PlaylistSong[]
+  favorites     Favorite[]
+  history       ListenHistory[]
+  lyrics        SongLyrics?
+
+  @@index([sourceType])
+  @@index([genreId])
+  @@index([isPublished])
+  @@index([createdAt])
+  @@index([title])
+  @@index([playCount])
+  @@map("songs")
+}
+
+/// Loi bai hat (LRCLIB hoac do quan tri vien dan vao) - luu lai de khong goi mang moi lan mo bai
+model SongLyrics {
+  id      String @id @default(cuid())
+  songId  String @unique
+  song    Song   @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  /// LRC co moc thoi gian (karaoke) - null khi chi co loi thuong hoac khong tim thay
+  syncedLyrics String? @db.NVarChar(Max)
+  /// Loi thuong (khong moc thoi gian)
+  plainLyrics  String? @db.NVarChar(Max)
+
+  /// LRCLIB | MANUAL
+  source String @db.NVarChar(20)
+  /// Ten bai/nghe si da dung de tra cuu (de biet cache ung voi tu khoa nao)
+  matchedTrack  String? @db.NVarChar(300)
+  matchedArtist String? @db.NVarChar(200)
+  /// Nguoi dan loi tay (quan tri vien)
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("song_lyrics")
+}
+
+/// Danh sach phat (cua ca nhan hoac do quan tri vien tao cho toan cong ty)
+model Playlist {
+  id          String  @id @default(cuid())
+  name        String  @db.NVarChar(200)
+  description String? @db.NVarChar(1000)
+  coverUrl    String? @db.NVarChar(1000)
+  /// true = moi nguoi deu xem duoc (playlist chinh thuc)
+  isPublic    Boolean @default(false)
+  /// true = do quan tri vien tao (playlist noi bo cong ty)
+  isFeatured  Boolean @default(false)
+
+  ownerId String
+  owner   User   @relation("PlaylistOwner", fields: [ownerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items PlaylistSong[]
+
+  @@index([ownerId])
+  @@index([isFeatured])
+  @@map("playlists")
+}
+
+/// Bang trung gian Playlist - Song (co thu tu phat)
+model PlaylistSong {
+  id         String   @id @default(cuid())
+  playlistId String
+  songId     String
+  position   Int      @default(0)
+  addedById  String?
+  addedAt    DateTime @default(now())
+
+  playlist Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  song     Song     @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  addedBy  User?    @relation("PlaylistItemAddedBy", fields: [addedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([playlistId, songId])
+  @@index([playlistId, position])
+  @@index([songId])
+  @@map("playlist_songs")
+}
+
+/// Bai nhac yeu thich cua tung nguoi dung
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([userId, songId])
+  @@index([userId, createdAt])
+  @@map("favorites")
+}
+
+/// Lich su nghe nhac
+model ListenHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  songId    String
+  playedAt  DateTime @default(now())
+  /// So mili-giay da nghe
+  msPlayed  Int      @default(0)
+  completed Boolean  @default(false)
+  /// Nguon phat sinh: web | player | api
+  source    String?  @db.NVarChar(50)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  song Song @relation(fields: [songId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, playedAt])
+  @@index([songId])
+  @@index([playedAt])
+  @@map("listen_history")
+}
+
+/// Cau hinh he thong do quan tri vien thay doi (key/value)
+model AppSetting {
+  key       String   @id @db.NVarChar(100)
+  value     String   @db.NVarChar(1000)
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}

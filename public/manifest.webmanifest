@@ -1,0 +1,20 @@
+{
+  "name": "NhacCuaHoiKS",
+  "short_name": "NhacCuaHoiKS",
+  "description": "Hệ thống nghe nhạc nội bộ NhacCuaHoiKS dành cho doanh nghiệp",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#070b16",
+  "theme_color": "#3a80f6",
+  "lang": "vi",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="NhacCuaHoiKS">
+  <title>NhacCuaHoiKS</title>
+  <defs>
+    <linearGradient id="nchGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <!-- Mau chu dao #3A80F6 -> indigo (giong .bg-gradient-brand trong globals.css) -->
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="55%" stop-color="#3a80f6" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+  </defs>
+
+  <!-- Nen gradient bo goc -->
+  <rect width="64" height="64" rx="18" fill="url(#nchGradient)" />
+
+  <!-- Song am thanh (hai cung tron mo dan) -->
+  <path
+    d="M32.6 15.6c6.4 1.3 11.1 4.8 13.7 10.5"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="4.6"
+    stroke-linecap="round"
+  />
+  <path
+    d="M44.9 30.8c1.5 3.6 2.3 7.3 2.3 11"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="4.6"
+    stroke-linecap="round"
+    stroke-opacity="0.45"
+  />
+
+  <!-- Not nhac (dau not + duoi not) -->
+  <ellipse cx="22" cy="44" rx="7.6" ry="6.2" transform="rotate(-18 22 44)" fill="#ffffff" />
+  <rect x="27.4" y="15.4" width="4.9" height="28.8" rx="2.45" fill="#ffffff" />
+
+  <!-- Anh sang nho tao chieu sau -->
+  <path
+    d="M0 46c14 6 34 8 64 3v-31c0 10-12 16-64 18z"
+    fill="#ffffff"
+    fill-opacity="0.06"
+  />
+</svg>

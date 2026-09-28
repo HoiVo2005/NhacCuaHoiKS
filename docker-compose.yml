@@ -1,0 +1,55 @@
+# =============================================================================
+# NhacCuaHoiKS - docker compose: SQL Server 2022 + Next.js app
+# Su dung:  docker compose up -d --build
+# =============================================================================
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: nhaccuahoiks-sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${MSSQL_SA_PASSWORD:?Thieu MSSQL_SA_PASSWORD - hay dat trong file .env}"
+      MSSQL_PID: "Developer"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P \"$$MSSQL_SA_PASSWORD\" -Q 'SELECT 1' || exit 1",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 12
+      start_period: 40s
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nhaccuahoiks-app
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "sqlserver://sqlserver:1433;database=NhacCuaHoi;schema=dbo;user=sa;password=${MSSQL_SA_PASSWORD:?Thieu MSSQL_SA_PASSWORD - hay dat trong file .env};encrypt=true;trustServerCertificate=true;connectTimeout=30"
+      AUTH_SECRET: "${AUTH_SECRET:?Thieu AUTH_SECRET - hay dat trong file .env}"
+      AUTH_URL: "${AUTH_URL:-http://localhost:3000}"
+      AUTH_TRUST_HOST: "true"
+      STORAGE_DRIVER: "local"
+      STORAGE_LOCAL_DIR: "/app/.data/uploads"
+      STORAGE_PUBLIC_PREFIX: "/api/files"
+      UPLOAD_MAX_BYTES: "104857600"
+      YOUTUBE_API_KEY: "${YOUTUBE_API_KEY:-}"
+      NEXT_PUBLIC_APP_NAME: "NhacCuaHoiKS"
+    ports:
+      - "3000:3000"
+    volumes:
+      - app-uploads:/app/.data/uploads
+
+volumes:
+  sqlserver-data:
+  app-uploads:

@@ -1,0 +1,555 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+/* =============================================================================
+   MyMusic - Design tokens (dark / neon music dashboard)
+   ============================================================================= */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  /* Bo mau thuong hieu (xanh duong) - xem khoi `--brand*` o `:root` */
+  --color-brand: var(--brand);
+  --color-brand-alt: var(--brand-alt);
+  --color-brand-sky: var(--brand-sky);
+
+  /* Nen mem cho badge / canh bao: moi giao dien tu chon sac do de chu van du tuong phan */
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-soft-foreground: var(--primary-soft-foreground);
+  --color-success-soft: var(--success-soft);
+  --color-success-soft-foreground: var(--success-soft-foreground);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-soft-foreground: var(--warning-soft-foreground);
+  --color-destructive-soft: var(--destructive-soft);
+  --color-destructive-soft-foreground: var(--destructive-soft-foreground);
+  --color-border-strong: var(--border-strong);
+  --color-overlay: var(--overlay);
+
+  /* Mau thuong hieu tung nguon phat (dung cho bieu do / thong ke / cham mau) */
+  --color-source-youtube: var(--source-youtube);
+  --color-source-soundcloud: var(--source-soundcloud);
+  --color-source-tiktok: var(--source-tiktok);
+  --color-source-uploaded: var(--source-uploaded);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+
+  /* Do bong 4 cap (ten rieng de khong trung namespace `--shadow-*` cua Tailwind) */
+  --shadow-soft: var(--elev-soft);
+  --shadow-card: var(--elev-card);
+  --shadow-float: var(--elev-float);
+  --shadow-brand: var(--elev-brand);
+
+  --animate-equalize: equalize 0.9s ease-in-out infinite;
+  --animate-marquee: marquee 14s linear infinite;
+  --animate-fade-in: fade-in 0.25s ease-out;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-pulse-glow: pulse-glow 2.4s ease-in-out infinite;
+  --animate-fade-up: fade-up 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+@keyframes equalize {
+  0%,
+  100% {
+    height: 22%;
+  }
+  50% {
+    height: 100%;
+  }
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Section/card hien dan len khi tai trang (dung cho animate-fade-up) */
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Vet sang chay qua khung xuong (skeleton) */
+@keyframes shimmer {
+  from {
+    background-position: -160% 0;
+  }
+  to {
+    background-position: 260% 0;
+  }
+}
+
+:root {
+  --radius: 0.75rem;
+
+  /* ================= Giao dien SANG (mac dinh) - mau chu dao #3A80F6 ================= */
+  --background: #f5f7fc;
+  --foreground: #131a2b;
+  --card: #ffffff;
+  --card-foreground: #131a2b;
+  --popover: #ffffff;
+  --popover-foreground: #131a2b;
+  /* Ban dam vua du cua #3A80F6: chu / nut / lien ket tren nen sang dat WCAG 4.5 */
+  --primary: #2563eb;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f8;
+  --secondary-foreground: #26324e;
+  --muted: #f0f3fa;
+  --muted-foreground: #5b6780;
+  --accent: #e9f1fe;
+  --accent-foreground: #1e3a8a;
+  --destructive: #be123c;
+  --destructive-foreground: #ffffff;
+  --success: #15803d;
+  --warning: #b45309;
+  --border: #e1e7f2;
+  --input: #ffffff;
+  --ring: #3a80f6;
+  --surface: #f7f9fd;
+  --surface-hover: #ecf1fa;
+  --glass: rgba(255, 255, 255, 0.84);
+
+  /* Nen mem (badge/canh bao), vien noi bat (khung video/anh) va lop phu modal */
+  --primary-soft: #e8f0fe;
+  --primary-soft-foreground: #1d4ed8;
+  --success-soft: #dcfce7;
+  --success-soft-foreground: #166534;
+  --warning-soft: #fef3c7;
+  --warning-soft-foreground: #92400e;
+  --destructive-soft: #fff1f2;
+  --destructive-soft-foreground: #be123c;
+  --border-strong: #d5ddeb;
+  --overlay: rgba(10, 18, 35, 0.55);
+
+  /* Do bong: ban sang dung bong mem mau xanh dam (khong dung den tuyet doi) */
+  --elev-soft: 0 1px 2px rgba(15, 27, 51, 0.05), 0 8px 22px -12px rgba(15, 27, 51, 0.12);
+  --elev-card: 0 2px 6px -2px rgba(15, 27, 51, 0.07), 0 20px 44px -22px rgba(15, 27, 51, 0.2);
+  --elev-float: 0 10px 20px -10px rgba(15, 27, 51, 0.16), 0 34px 64px -32px rgba(15, 27, 51, 0.3);
+  --elev-brand: 0 14px 34px -14px color-mix(in srgb, var(--brand) 55%, transparent);
+
+  /*
+   * Bo mau thuong hieu - MAU CHU DAO LA #3A80F6:
+   *  - `--brand`      : dung ngay mau chu dao (vong focus, anh sang nen, nen mem, thanh truot,
+   *                     cham bieu do, va `--primary` o giao dien toi).
+   *  - `--brand-alt`  : mau cham (indigo) - dau kia cua gradient + vung khuech dai am luong > 100%.
+   *  - `--brand-sky`  : xanh cyan - diem nhan thu ba (cham bieu do, anh sang nen, bieu tuong).
+   *  - `--brand-grad-*`: 2 moc gradient cua nut/logo/avatar - giu sac dam de chu trang dat WCAG
+   *                     o CA HAI giao dien (chu trang tren #3A80F6 chi dat 3.7).
+   */
+  --brand: #3a80f6;
+  --brand-alt: #4f46e5;
+  --brand-sky: #0284c7;
+  --brand-grad-from: #2563eb;
+  --brand-grad-to: #4f46e5;
+
+  /* Mau nguon phat: ban SANG dung sac dam hon de khong bi "nhat" tren nen trang */
+  --source-youtube: #c8102e;
+  --source-soundcloud: #c2410c;
+  --source-tiktok: #0284c7;
+  --source-uploaded: #2563eb;
+}
+
+/* ================= Giao dien TOI (bat bang nut doi giao dien) ================= */
+.dark {
+  --background: #070b16;
+  --foreground: #f3f6fc;
+  --card: #0f1626;
+  --card-foreground: #f3f6fc;
+  --popover: #0f1626;
+  --popover-foreground: #f3f6fc;
+  /* Ban toi dung DUNG mau chu dao #3A80F6 (sang, dat >= 4.5 khi lam chu tren nen dam) */
+  --primary: #3a80f6;
+  /*
+   * Vi `--primary` sang nen chu tren nen nut phai la mau muc dam -> chu trang tren #3A80F6
+   * chi dat 3.7. Xem `check:theme`.
+   */
+  --primary-foreground: #06101f;
+  --secondary: #1b2438;
+  --secondary-foreground: #e9eef9;
+  --muted: #141c2e;
+  --muted-foreground: #9aa7c2;
+  --accent: #1b2740;
+  --accent-foreground: #ffffff;
+  --destructive: #f43f5e;
+  /* Cung ly do nhu `--primary-foreground`: hong sang -> chu tren nen nut dung mau muc dam */
+  --destructive-foreground: #2a0711;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --border: #223049;
+  --input: #1b2740;
+  --ring: #3a80f6;
+  --surface: #0c1220;
+  --surface-hover: #151e33;
+  --glass: rgba(14, 20, 36, 0.72);
+
+  --primary-soft: #16233f;
+  --primary-soft-foreground: #a8c7fa;
+  --success-soft: #0f2a1b;
+  --success-soft-foreground: #86efac;
+  --warning-soft: #33240a;
+  --warning-soft-foreground: #fcd34d;
+  --destructive-soft: #35121c;
+  --destructive-soft-foreground: #fda4af;
+  --border-strong: rgba(255, 255, 255, 0.12);
+  --overlay: rgba(0, 0, 0, 0.72);
+
+  /* Do bong: ban toi can dam hon de khoi bi chim vao nen */
+  --elev-soft: 0 1px 2px rgba(0, 0, 0, 0.45), 0 10px 26px -14px rgba(0, 0, 0, 0.6);
+  --elev-card: 0 2px 8px -2px rgba(0, 0, 0, 0.55), 0 22px 48px -24px rgba(0, 0, 0, 0.8);
+  --elev-float: 0 12px 24px -12px rgba(0, 0, 0, 0.62), 0 38px 72px -36px rgba(0, 0, 0, 0.9);
+  --elev-brand: 0 16px 38px -16px color-mix(in srgb, var(--brand) 65%, transparent);
+
+  /* Bo mau thuong hieu: ban toi dung ban tuoi hon, van la cung ho xanh duong */
+  --brand: #3a80f6;
+  --brand-alt: #6366f1;
+  --brand-sky: #38bdf8;
+  --brand-grad-from: #2563eb;
+  --brand-grad-to: #4f46e5;
+
+  /* Ban TOI giu dung mau thuong hieu cua nen tang (da du tuong phan tren nen dam) */
+  --source-youtube: #ff0033;
+  --source-soundcloud: #ff5500;
+  --source-tiktok: #22d3ee;
+  --source-uploaded: #3a80f6;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    /*
+     * Anh sang nen lay tu token thuong hieu: doi mau thuong hieu la ca hai giao dien
+     * doi theo, khong con mau rgba cung dinh cho rieng ban toi.
+     */
+    background-image:
+      radial-gradient(
+        60rem 40rem at 12% -10%,
+        color-mix(in srgb, var(--brand) 10%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        50rem 34rem at 100% 0%,
+        color-mix(in srgb, var(--brand-sky) 8%, transparent),
+        transparent 55%
+      ),
+      radial-gradient(
+        46rem 34rem at 60% 110%,
+        color-mix(in srgb, var(--brand-alt) 7%, transparent),
+        transparent 60%
+      );
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Ban toi: cung vi tri nhung dam hon de anh sang khong bi chim */
+  .dark body {
+    background-image:
+      radial-gradient(
+        60rem 40rem at 12% -10%,
+        color-mix(in srgb, var(--brand) 18%, transparent),
+        transparent 60%
+      ),
+      radial-gradient(
+        50rem 34rem at 100% 0%,
+        color-mix(in srgb, var(--brand-sky) 12%, transparent),
+        transparent 55%
+      ),
+      radial-gradient(
+        46rem 34rem at 60% 110%,
+        color-mix(in srgb, var(--brand-alt) 12%, transparent),
+        transparent 60%
+      );
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+
+  .dark ::selection {
+    background-color: color-mix(in srgb, var(--primary) 40%, transparent);
+  }
+}
+
+/*
+ * Gradient cua nut / logo / avatar / o tick: giu 2 moc dam de chu trang dat WCAG o ca hai giao dien.
+ *
+ * LUU Y (loi da gap): phai khai bao bang `@utility` - Tailwind v4 chi sinh CSS cho BIEN THE
+ * (vi du `data-[state=checked]:bg-gradient-brand` cua Checkbox) khi class la utility that.
+ * Class thuong dat trong `@layer components` se bi Tailwind bo qua o phan bien the => o tick
+ * trong thu vien nhac o giao dien sang giu nen gan trang (`bg-surface/70`) nhung dau tich lai
+ * mau trang -> mat dau tich. Xem `npm run check:theme`.
+ */
+@utility bg-gradient-brand {
+  background-image: linear-gradient(120deg, var(--brand-grad-from), var(--brand-grad-to));
+}
+
+@layer components {
+  /* Chu gradient: xanh chu dao -> xanh cyan -> cham (moc dau/ cuoi du dam de doc tren nen sang) */
+  .text-gradient {
+    background-image: linear-gradient(90deg, var(--primary), var(--brand-sky) 55%, var(--brand-alt));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .glass {
+    background-color: var(--glass);
+    backdrop-filter: blur(16px);
+  }
+
+  /* Quang sang theo mau chu dao -> dung cho ca hai giao dien */
+  .glow-brand {
+    box-shadow: 0 18px 60px -22px color-mix(in srgb, var(--brand) 55%, transparent);
+  }
+
+  /* ---------------------------------------------------------------------------
+     Bo utility dung lai cho toan bo giao dien (mot card/khung nhat quan nhu
+     "card primitive" cua Spotify): nen kinh mo + vien mem + bong 1 cap.
+     --------------------------------------------------------------------------- */
+  .card-surface {
+    background-color: color-mix(in srgb, var(--card) 72%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+    box-shadow: var(--elev-soft);
+    backdrop-filter: blur(14px);
+  }
+
+  /* Nang nhe khi hover (the bai nhac / playlist / the thong ke) */
+  .lift {
+    transition:
+      transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.25s ease,
+      border-color 0.25s ease,
+      background-color 0.25s ease;
+  }
+
+  .lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--elev-card);
+    border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+  }
+
+  /* Khung bia nhac: bo goc + vien + bong nhe, anh tu zoom khi hover the cha (.group) */
+  .art-frame {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-xl);
+    border: 1px solid color-mix(in srgb, var(--border-strong) 90%, transparent);
+    background-color: var(--surface);
+    box-shadow: var(--elev-soft);
+  }
+
+  .art-frame img {
+    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .group:hover .art-frame img {
+    transform: scale(1.06);
+  }
+
+  /* Vet sang mau chu dao (gach chan header, duong ngan cach section) */
+  .hairline {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--brand) 55%, transparent) 30%,
+      color-mix(in srgb, var(--brand-sky) 45%, transparent) 60%,
+      transparent
+    );
+  }
+
+  /* Nen hero: mesh gradient + luoi mo - khong can anh ngoai */
+  .hero-mesh {
+    position: relative;
+    background-color: color-mix(in srgb, var(--card) 60%, transparent);
+  }
+
+  .hero-mesh::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(
+        38rem 22rem at 8% 0%,
+        color-mix(in srgb, var(--brand) 30%, transparent),
+        transparent 65%
+      ),
+      radial-gradient(
+        30rem 20rem at 95% 10%,
+        color-mix(in srgb, var(--brand-sky) 22%, transparent),
+        transparent 62%
+      ),
+      radial-gradient(
+        28rem 20rem at 60% 115%,
+        color-mix(in srgb, var(--brand-alt) 18%, transparent),
+        transparent 60%
+      );
+    pointer-events: none;
+  }
+
+  .hero-mesh::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--foreground) 5%, transparent) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(75% 70% at 30% 20%, black, transparent 75%);
+    pointer-events: none;
+  }
+
+  /* Chip kinh mo (so lieu tren hero, nhan trang thai) */
+  .chip-glass {
+    background-color: color-mix(in srgb, var(--card) 55%, transparent);
+    border: 1px solid color-mix(in srgb, var(--border-strong) 85%, transparent);
+    backdrop-filter: blur(10px);
+  }
+
+  /* Song nhac nhun nhay khi bai dang phat (dung thay bieu tuong not tinh) */
+  .equalize-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+
+  .equalize-bars > span {
+    width: 2.5px;
+    border-radius: 9999px;
+    background-image: linear-gradient(180deg, var(--brand), var(--brand-sky));
+    animation: equalize 0.9s ease-in-out infinite;
+  }
+
+  /*
+   * Ton trong cai dat "giam chuyen dong" cua he dieu hanh (rat quan trong tren dien thoai:
+   * nguoi dung bat tiet kiem pin / giam chuyen dong thi khong nen chay hieu ung lien tuc).
+   */
+  @media (prefers-reduced-motion: reduce) {
+    .lift:hover,
+    .group:hover .art-frame img {
+      transform: none;
+    }
+
+    .equalize-bars > span,
+    .animate-shimmer,
+    .animate-fade-up,
+    .animate-fade-in,
+    .animate-slide-up,
+    .animate-pulse-glow,
+    .animate-equalize,
+    .animate-marquee {
+      animation: none !important;
+    }
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary) 50%, transparent) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--primary) 45%, transparent);
+    border-radius: 9999px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background-color: transparent;
+  }
+
+  /* Vung an toan cho dien thoai (iPhone notch / thanh gesture) */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
