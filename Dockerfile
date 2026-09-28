@@ -40,6 +40,8 @@ COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/tsconfig.json ./tsconfig.json
+COPY --from=builder /app/scripts/docker-start.cjs ./scripts/docker-start.cjs
+COPY --from=builder /app/scripts/unlock-migrations.cjs ./scripts/unlock-migrations.cjs
 
 RUN mkdir -p /app/.data/uploads
 
@@ -49,12 +51,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=25s --retries=5 \
   CMD curl -fsS "http://127.0.0.1:${PORT:-3000}/api/health" || exit 1
 
 # Ap dung migration roi khoi dong Next.js o che do production.
-#
-# MIGRATION PHAI DI DUONG TRUC TIEP (khong qua pooler):
-#   Neon/PgBouncer khien `pg_advisory_lock` cua Prisma bi treo -> "Error: P1002 ... Timed out
-#   trying to acquire a postgres advisory lock" va deploy that bai. Uu tien `DIRECT_URL` (chuoi
-#   khong co "-pooler"); neu khong co thi tu bo hau to "-pooler" khoi DATABASE_URL.
-#   Ung dung luc chay VAN dung DATABASE_URL (pooled) nhu cu.
-#
-# `${PORT:-3000}`: dung cong do nen tang cap (Render = 10000), local thi mac dinh 3000.
-CMD ["sh", "-c", "set -e; MIGRATE_URL=\"${DIRECT_URL:-$DATABASE_URL}\"; MIGRATE_URL=$(printf '%s' \"$MIGRATE_URL\" | sed 's/-pooler//'); echo '[start] prisma migrate deploy qua ket noi TRUC TIEP (bo -pooler)'; DATABASE_URL=\"$MIGRATE_URL\" npx prisma migrate deploy; exec npx next start -p ${PORT:-3000} -H 0.0.0.0"]
+# Toan bo logic nam trong `scripts/docker-start.cjs` (de doc/de sua va tranh loi CRLF cua file .sh):
+#   1) Go "advisory lock" con treo tren Neon - nguyen nhan loi P1002 khi deploy;
+#   2) `prisma migrate deploy` qua ket noi TRUC TIEP (bo "-pooler"), thu lai toi da 4 lan;
+#   3) `next start` + chuyen tiep tin hieu dung (SIGTERM/SIGINT).
+CMD ["node", "scripts/docker-start.cjs"]

@@ -749,6 +749,15 @@ Repo đã có sẵn **`render.yaml`** (Render Blueprint) nên các bước chỉ
    - `AUTH_URL` = `https://<tên-dịch-vụ>.onrender.com` (đổi lại sau khi gắn tên miền riêng)
 3. Bấm **Apply**. Build tự chạy: `npm ci` → `prisma generate` → **`prisma migrate deploy`** (tạo bảng trên
    Neon) → `next build`; sau đó `next start`. Health check dùng `/api/health`.
+
+   > **Migration lúc khởi động container**: `Dockerfile` **không** chạy `prisma migrate deploy` trực tiếp mà
+   > gọi `scripts/docker-start.cjs`, script này: (1) **gỡ “advisory lock” còn treo** trên Neon, (2) migrate qua
+   > kết nối **trực tiếp** (bỏ `-pooler`) và **thử lại 4 lần**. Lý do: `pg_advisory_lock` của Prisma
+   > (a) treo khi đi qua pooler và (b) hai deploy chạy **song song** rất dễ tranh nhau đúng cái lock đó →
+   > `Error: P1002`. Nếu vẫn không migrate được, ứng dụng **vẫn khởi động** (migration đã được áp dụng trước
+   > khi phát hành) và ghi cảnh báo vào log — web không sập vì lỗi tạm thời của lock.
+   > **Đừng bấm _Manual Deploy_ liên tục khi đang có deploy chạy** — mỗi lần bấm là thêm một container cùng
+   > tranh lock. Cấu hình này được canh tự động bằng `npm run check:deploy`.
 4. **Tạo tài khoản đăng nhập** — chọn một trong hai (chạy ở Render → service → tab _Shell_):
    - **Có dữ liệu mẫu**: `npm run db:seed` → tạo admin `admin@mymusic.local / Admin@123456` + ~24 bài.
    - **Thư viện trắng, tự thêm bài sau**: `npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"`

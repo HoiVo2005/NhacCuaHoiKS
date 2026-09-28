@@ -53,6 +53,7 @@
     "check:media": "tsx scripts/verify-media-session.ts",
     "check:search": "tsx scripts/verify-search.ts",
     "check:devices": "tsx scripts/verify-devices.ts",
+    "check:deploy": "tsx scripts/verify-deploy.ts",
     "check:mobile": "tsx scripts/verify-mobile.ts",
     "check:youtube": "tsx scripts/verify-youtube-engine.ts",
     "check:playback": "tsx scripts/verify-playback-perf.ts",
