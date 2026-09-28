@@ -15,7 +15,7 @@ nghe nhạc, tạo playlist, lưu yêu thích và theo dõi lịch sử nghe c�
     trắng chỉ đạt 3.75 (< ngưỡng WCAG 4.5) khi làm màu chữ. Trên nền tối thì `#3A80F6` sáng nên
     đúng chuẩn, nên `--primary` bản tối chính là `#3A80F6`.
   - Nút/logo/avatar dùng `bg-gradient-brand` với 2 mốc **đậm** (`--brand-grad-from #2563eb` →
-    `--brand-grad-to #4f46e5`) để chữ trắng đạt WCAG ở cả hai giao diện — *không* đặt chữ trắng trực
+    `--brand-grad-to #4f46e5`) để chữ trắng đạt WCAG ở cả hai giao diện — _không_ đặt chữ trắng trực
     tiếp trên màu phẳng `#3A80F6`.
   - Điểm nhấn phụ: `--brand-alt` (indigo — vùng khuếch đại âm lượng > 100%) và `--brand-sky` (cyan —
     biểu tượng/biểu đồ). Riêng tim “Yêu thích” giữ màu hồng `text-rose-500` để nổi bật khỏi màu chủ đạo.
@@ -39,19 +39,19 @@ nghe nhạc, tạo playlist, lưu yêu thích và theo dõi lịch sử nghe c�
 
 - Nút **3 gạch** ở góc trái, nhấn để **mở**, nhấn lần nữa để **đóng** (3 gạch chuyển thành dấu ✕).
 - Menu tự đóng khi: chọn một mục, chạm vào nền mờ, nhấn `Esc`, hoặc bấm logo. Cuộn trang nền bị khoá khi menu mở.
-- Ngăn kéo chia **nhóm điều hướng** (*Nghe nhạc* / *Thư viện của tôi*; khu quản trị là *Quản trị*) với nhãn
+- Ngăn kéo chia **nhóm điều hướng** (_Nghe nhạc_ / _Thư viện của tôi_; khu quản trị là _Quản trị_) với nhãn
   chữ in hoa nhỏ — mục đang xem có icon gradient + `aria-current="page"`.
 - Nội dung menu: mục đang xem được tô sáng, mỗi mục có icon + mô tả ngắn. **Tài khoản không còn nằm trong
   menu**: khách chỉ thấy nút **Đăng nhập** ở cuối menu, người đã đăng nhập dùng menu tài khoản trên header.
 - Header mobile gồm **hai hàng cao đúng 3rem (48px)** khớp nhau:
   - Hàng trên: nút 3 gạch (có khung gradient khi mở) + **logo gradient** + **tên thương hiệu tô màu gradient**;
     khi nhạc đang phát hiện thêm **sóng nhạc động** (equalizer); bên phải là nút **Sáng tạo** (ADMIN →
-    *Thêm bài nhạc*, nhân viên → *Tạo playlist*), nút **đổi sáng/tối** và **avatar tài khoản** (thu gọn thành
-    vòng tròn 32px, mở menu *Hồ sơ cá nhân* / *chuyển khu vực* / *Đăng xuất*). Khách thấy nút **Đăng nhập**
+    _Thêm bài nhạc_, nhân viên → _Tạo playlist_), nút **đổi sáng/tối** và **avatar tài khoản** (thu gọn thành
+    vòng tròn 32px, mở menu _Hồ sơ cá nhân_ / _chuyển khu vực_ / _Đăng xuất_). Khách thấy nút **Đăng nhập**
     thay cho avatar.
   - Hàng dưới **chỉ còn ô tìm kiếm dạng pill** (icon kính lúp tô màu thương hiệu, không còn khoảng trống dành
     cho phím tắt) — avatar, nút đổi giao diện và nút Sáng tạo đã được đưa lên hàng trên.
-  Toàn bộ điều hướng nằm trong ngăn kéo của nút 3 gạch (không còn dải pill thừa trên header).
+    Toàn bộ điều hướng nằm trong ngăn kéo của nút 3 gạch (không còn dải pill thừa trên header).
 
 **Giao diện sáng / tối**
 
@@ -93,18 +93,18 @@ nghe nhạc, tạo playlist, lưu yêu thích và theo dõi lịch sử nghe c�
 Mọi bề mặt đều dựng từ **một primitive dùng lại** thay vì mỗi trang tự vẽ một kiểu. Bộ utility nằm trong
 `src/app/globals.css`:
 
-| Utility | Công dụng |
-|---|---|
-| `card-surface` | Nền kính mờ + viền mềm + bóng cấp 1 — dùng cho thẻ bài nhạc, playlist, thẻ thống kê, khung xương |
-| `lift` | Nâng thẻ lên 3px + bóng đậm hơn khi hover (mọi thẻ đều dùng cùng một nhịp chuyển động) |
-| `art-frame` | Khung bìa nhạc: bo góc + viền + bóng, ảnh tự zoom 6% khi hover thẻ cha |
-| `hero-mesh` | Nền hero: mesh gradient + lưới mờ dựng bằng token màu chủ đạo (không cần ảnh ngoài) |
-| `hairline` | Vệt sáng gradient ngăn cách các “shelf” và chân header/sidebar |
-| `chip-glass` | Chip kính mờ (số liệu trên hero, thanh “Phát tất cả”) |
-| `equalize-bars` | Sóng nhạc động báo “đang phát” (thay cho ký tự ♪ tĩnh) |
+| Utility             | Công dụng                                                                                                                                                            |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `card-surface`      | Nền kính mờ + viền mềm + bóng cấp 1 — dùng cho thẻ bài nhạc, playlist, thẻ thống kê, khung xương                                                                     |
+| `lift`              | Nâng thẻ lên 3px + bóng đậm hơn khi hover (mọi thẻ đều dùng cùng một nhịp chuyển động)                                                                               |
+| `art-frame`         | Khung bìa nhạc: bo góc + viền + bóng, ảnh tự zoom 6% khi hover thẻ cha                                                                                               |
+| `hero-mesh`         | Nền hero: mesh gradient + lưới mờ dựng bằng token màu chủ đạo (không cần ảnh ngoài)                                                                                  |
+| `hairline`          | Vệt sáng gradient ngăn cách các “shelf” và chân header/sidebar                                                                                                       |
+| `chip-glass`        | Chip kính mờ (số liệu trên hero, thanh “Phát tất cả”)                                                                                                                |
+| `equalize-bars`     | Sóng nhạc động báo “đang phát” (thay cho ký tự ♪ tĩnh)                                                                                                               |
 | `bg-gradient-brand` | Nền gradient 2 mốc đậm của nút/logo/avatar **và ô tick** — khai báo bằng `@utility` nên dùng được với biến thể (`data-[state=checked]:bg-gradient-brand`, `hover:`…) |
-| Bóng 4 cấp | `shadow-soft` · `shadow-card` · `shadow-float` · `shadow-brand` (token `--elev-*`, khác nhau ở 2 giao diện) |
-| Chuyển động | `animate-fade-up` (section hiện dần) · `animate-shimmer` (vệt sáng chạy qua khung xương) |
+| Bóng 4 cấp          | `shadow-soft` · `shadow-card` · `shadow-float` · `shadow-brand` (token `--elev-*`, khác nhau ở 2 giao diện)                                                          |
+| Chuyển động         | `animate-fade-up` (section hiện dần) · `animate-shimmer` (vệt sáng chạy qua khung xương)                                                                             |
 
 Quy ước áp dụng:
 
@@ -136,12 +136,13 @@ Quy ước áp dụng:
   - Kiểm chứng bằng `npm run check:thumbs` (kiểm cả URL thật trên `i.ytimg.com` bằng `HEAD`; mất mạng thì `SKIP`).
 
 **Desktop (từ 1024px)**
+
 - Sidebar cố định bên trái, có **vệt sáng màu chủ đạo** dưới logo và menu **chia nhóm**; mục đang mở có
   vạch chỉ báo gradient bên trái + `aria-current`; header hiển thị **tên trang + mô tả** theo đúng mục đang
   mở (ví dụ “Thư viện nhạc · Quản lý toàn bộ bài nhạc”), kèm icon tương ứng.
 - Mục được tô sáng là mục **khớp cụ thể nhất** với đường dẫn, nên **không bao giờ có 2 mục cùng sáng**: ở
-  `/admin/music/new` chỉ *Thêm bài nhạc* sáng (*Thư viện nhạc* không sáng nữa), còn trang chi tiết
-  `/music/playlists/abc` vẫn giữ *Playlist của tôi* sáng. Cùng một hàm `isActiveNav` dùng cho cả sidebar
+  `/admin/music/new` chỉ _Thêm bài nhạc_ sáng (_Thư viện nhạc_ không sáng nữa), còn trang chi tiết
+  `/music/playlists/abc` vẫn giữ _Playlist của tôi_ sáng. Cùng một hàm `isActiveNav` dùng cho cả sidebar
   desktop lẫn ngăn kéo mobile, có test tự động trong `npm run check:nav`.
 - Ô tìm kiếm dạng pill ở giữa, có nút xoá từ khoá, gợi ý phím tắt **Ctrl/⌘ + K** hoặc **/** để focus nhanh,
   gợi ý kết quả dạng thẻ có ảnh bìa và nút “Xem tất cả kết quả”.
@@ -165,7 +166,7 @@ Quy ước áp dụng:
   playlist nổi bật, nhạc mới, nhạc nghe nhiều nhất. Mỗi mục đều có liên kết **“Xem tất cả ›”**
   (nghe tiếp → `/music/history`, playlist nổi bật → `/music/playlists`, nhạc mới → `/music/discover`,
   nghe nhiều nhất → `/music/discover?sort=plays`).
-  Con số ở banner chào mừng (“Tổng hợp *N* bài nhạc nổi bật”) đếm **theo id** nên bài nằm ở cả hai
+  Con số ở banner chào mừng (“Tổng hợp _N_ bài nhạc nổi bật”) đếm **theo id** nên bài nằm ở cả hai
   danh sách “Mới thêm” và “Nghe nhiều nhất” chỉ được tính **một lần** (`countUniqueSongs`).
 - **Khám phá**: lọc theo thể loại, nguồn phát (YouTube/SoundCloud/TikTok/File) và thứ tự, có phân trang.
 - **Tìm kiếm**: tìm bài nhạc, nghệ sĩ, thể loại; gợi ý nhanh ngay trên thanh tìm kiếm.
@@ -206,7 +207,7 @@ Quy ước áp dụng:
   - TikTok: TikTok Embed Player + `postMessage`
   - File nội bộ: thẻ `<audio>` HTML5 (hỗ trợ HTTP Range để tua)
 - Tự động cập nhật **thời lượng** vào CSDL khi trình phát biết chính xác thời lượng.
-- Ghi nhận lịch sử nghe **tiết kiệm request** (chi tiết ở mục *Tối ưu tốc độ tải trang*):
+- Ghi nhận lịch sử nghe **tiết kiệm request** (chi tiết ở mục _Tối ưu tốc độ tải trang_):
   - Chỉ tính là một lượt nghe khi bài đã phát **≥ 5 giây** (bấm nhầm / skip nhanh không tạo rác), sau đó
     cập nhật khi vị trí nghe **tiến thêm ≥ 30 giây**, gửi nốt khi tạm dừng và đánh dấu khi nghe hết.
   - Nhịp kiểm tra 5 giây/lần nhưng **chỉ đọc trạng thái trong bộ nhớ** (không gọi API); luôn chỉ có **một**
@@ -244,7 +245,7 @@ Quy ước áp dụng:
 
 - Chờ sự kiện `onReady` trước khi gọi `playVideo`/`loadVideoById` — tránh lỗi
   `playVideo is not a function` khi React StrictMode gọi effect 2 lần (player chưa sẵn sàng).
-- Không để YouTube thay thế `<div>` do React quản lý: engine tạo một *mount node* con rồi mới
+- Không để YouTube thay thế `<div>` do React quản lý: engine tạo một _mount node_ con rồi mới
   đưa cho YT, nhờ đó khung video ẩn/hiện/nổi giữ đúng class và không còn iframe "mồ côi".
 - Âm lượng, tắt tiếng và vị trí tua đặt **trước** khi player sẵn sàng sẽ được áp dụng ngay sau `onReady`.
 - Nếu YouTube không sẵn sàng sau 15 giây, hệ thống báo lỗi rõ ràng và cho phép phát lại
@@ -326,7 +327,7 @@ Quy ước áp dụng:
   nút chỉnh lệch **±0.5s** cho những bản thu chạy sớm/muộn hơn bản gốc.
   - Nguồn lời: **LRCLIB** (`lrclib.net`, API công khai không cần khoá). Server tra theo thứ tự “chính xác
     nhất trước”: với **từng biến thể tên bài** (bản đã làm sạch → bản gốc → từng đoạn sau dấu `|` → phần trước
-    ` - `) lần lượt thử `/get` (kèm thời lượng) → `/search` kèm nghệ sĩ → `/search` **chỉ theo tên bài**.
+    `-`) lần lượt thử `/get` (kèm thời lượng) → `/search` kèm nghệ sĩ → `/search` **chỉ theo tên bài**.
     - Tên bài được “làm sạch” trước khi tra (`(Official Video)`, `Lyric Video`, `(Audio)`, `- Topic`… và các
       đoạn tên kênh sau dấu `|`) nhưng **giữ nguyên** các bản khác về lời (`Remix`, `Live`, `Karaoke`).
     - Bước “tìm chỉ theo tên bài” là cần thiết vì cột `artist` trong thư viện thường là **kênh YouTube/người
@@ -340,7 +341,7 @@ Quy ước áp dụng:
     lại sau 14 ngày.
   - **Thêm bài nhạc mới là tự lấy lời ngay** (chạy **nền**, không làm chậm thao tác thêm bài) nên người đầu tiên
     mở bài là đã có lời. Các bài **đã có trong thư viện từ trước** thì bấm nút **“Lấy lời cho N bài”** ở đầu trang
-    *Thư viện nhạc*: hệ thống tự lấy lời cho từng đợt 20 bài (nghỉ 0,25 giây giữa các bài cho lịch sự với LRCLIB,
+    _Thư viện nhạc_: hệ thống tự lấy lời cho từng đợt 20 bài (nghỉ 0,25 giây giữa các bài cho lịch sự với LRCLIB,
     tối đa 10 đợt mỗi lần bấm) và dừng khi hết bài hoặc không còn tiến triển; nút tự hiện “Bài nào cũng có lời”
     khi xong. Bài vừa tra cứu xong sẽ không được chọn lại ngay, nên bấm nhiều lần cũng không lặp vô hạn.
   - **Chỉ tự tìm lời cho “bài hát đơn”**: bỏ qua liên khúc (LK), mix/nonstop/mashup/medley, tuyển tập/tổng hợp/
@@ -348,13 +349,13 @@ Quy ước áp dụng:
     này chứa nhiều bài nên tra cứu tự động rất dễ ra lời sai. Bảng lời **nói rõ lý do** bỏ qua, quản trị viên có
     nút **“Vẫn tra cứu”** (gửi `?force=1`, chỉ ADMIN) hoặc dán lời thủ công; lời dán tay **luôn** được hiển thị.
     Luật phân loại nằm ở `src/lib/music/lyrics-auto.ts`.
-  - **Kiểm tra ĐÚNG BÀI trước khi hiện** (nguyên tắc: *không hiện lời sai* — thà báo “chưa tìm thấy” để quản
+  - **Kiểm tra ĐÚNG BÀI trước khi hiện** (nguyên tắc: _không hiện lời sai_ — thà báo “chưa tìm thấy” để quản
     trị viên dán tay): mỗi bản ghi tìm được phải khớp **tên bài** theo tập từ (bỏ các từ vô nghĩa như
     official/mv/audio/remix/live/cover vì các bản này dùng chung lời), so khớp **không phân biệt dấu tiếng Việt**;
     tên bài quá ngắn (1 từ) thì bắt buộc phải có thêm tín hiệu **nghệ sĩ** hoặc **thời lượng** mới nhận. Bản
     không đủ chắc chắn bị **bỏ qua** và ghi lại để báo cho quản trị viên biết lý do.
-  - Trên bảng lời có **nhãn độ tin cậy**: *Quản trị viên dán* · *Đúng bài* (khớp cả tên + nghệ sĩ) ·
-    *Khớp gần đúng* (chỉ khớp tên bài — bản remix/cover/tên kênh, kèm dòng nhắc kiểm tra lại). Luật khớp nằm ở
+  - Trên bảng lời có **nhãn độ tin cậy**: _Quản trị viên dán_ · _Đúng bài_ (khớp cả tên + nghệ sĩ) ·
+    _Khớp gần đúng_ (chỉ khớp tên bài — bản remix/cover/tên kênh, kèm dòng nhắc kiểm tra lại). Luật khớp nằm ở
     `src/lib/music/lyrics-match.ts`, `src/lib/music/lyrics-title.ts`.
   - Khách chưa đăng nhập **đọc** được lời của bài đã phát hành (như nghe nhạc), nhưng dán/xoá lời thì phải là
     quản trị viên (`POST`/`DELETE` đều qua `requireApiAdmin`).
@@ -418,7 +419,7 @@ không cho phép nhúng hoặc video bị giới hạn, hệ thống **báo lỗ
 SoundCloud **đã ngừng endpoint oEmbed** (`soundcloud.com/oembed` trả 404 từ 2026), nên hệ thống
 dùng 2 tầng — **không bắt buộc phải có API key**:
 
-1. **SoundCloud API chính thức** (`api.soundcloud.com/resolve`) — *tuỳ chọn*: nếu bạn cấu hình
+1. **SoundCloud API chính thức** (`api.soundcloud.com/resolve`) — _tuỳ chọn_: nếu bạn cấu hình
    `SOUNDCLOUD_CLIENT_ID` thì metadata đầy đủ nhất (kèm tags). Đăng ký app miễn phí tại
    [developers.soundcloud.com](https://developers.soundcloud.com/) rồi dán Client ID vào `.env`.
 2. **Không cần cấu hình gì (mặc định)**: hệ thống đọc thẻ meta Open Graph + dữ liệu hydration của trang
@@ -428,19 +429,19 @@ dùng 2 tầng — **không bắt buộc phải có API key**:
    **“Bổ sung thông tin từ SoundCloud”** trong trang thêm nhạc cho phép chạy lại bước này.
 
 Nếu bài nhạc đã bị xoá/đặt riêng tư, hệ thống báo rõ:
-*“Không tìm thấy bài nhạc này trên SoundCloud…”* (đây là nguyên nhân phổ biến nhất khi trước đây
+_“Không tìm thấy bài nhạc này trên SoundCloud…”_ (đây là nguyên nhân phổ biến nhất khi trước đây
 không lấy được nhạc). Bạn có thể kiểm tra nhanh một link cụ thể bằng `npm run metadata:check <url>`.
 
 ---
 
 ## 2. Yêu cầu hệ thống
 
-| Thành phần | Phiên bản đề xuất |
-| --- | --- |
-| Node.js | ≥ 20.9 (khuyến nghị 22 hoặc 24) |
-| npm | ≥ 10 |
-| PostgreSQL | 15+ (khuyến nghị **Neon** hoặc Render Postgres; hoặc Docker `postgres:16-alpine`) |
-| Hệ điều hành | Windows / Linux / macOS |
+| Thành phần   | Phiên bản đề xuất                                                                 |
+| ------------ | --------------------------------------------------------------------------------- |
+| Node.js      | ≥ 20.9 (khuyến nghị 22 hoặc 24)                                                   |
+| npm          | ≥ 10                                                                              |
+| PostgreSQL   | 15+ (khuyến nghị **Neon** hoặc Render Postgres; hoặc Docker `postgres:16-alpine`) |
+| Hệ điều hành | Windows / Linux / macOS                                                           |
 
 ---
 
@@ -502,7 +503,7 @@ NEXT_PUBLIC_APP_NAME="NhacCuaHoiKS"
 
 ### Tạo database PostgreSQL trên Neon
 
-1. Đăng nhập [neon.tech](https://neon.tech) → **New Project** (chọn region gần Việt Nam, ví dụ *Singapore*).
+1. Đăng nhập [neon.tech](https://neon.tech) → **New Project** (chọn region gần Việt Nam, ví dụ _Singapore_).
 2. Mở **Connection string** → chọn **Pooled connection** → sao chép chuỗi dạng
    `postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require`.
 3. Dán vào `DATABASE_URL` trong `.env`, rồi chạy:
@@ -531,25 +532,29 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 ## 5. Tài khoản mẫu (sau khi `npm run db:seed`)
 
 > **Không chạy seed?** CSDL trắng sẽ **không có tài khoản nào** — hãy tạo riêng một tài khoản quản trị:
+>
 > ```bash
 > npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"
 > ```
+>
 > Thêm `--dry-run` để kiểm tra tham số (email hợp lệ, mật khẩu ≥ 8 ký tự) mà không ghi vào CSDL.
 >
 > **Đã seed rồi mà muốn xoá dữ liệu mẫu (giữ tài khoản)?** `prisma migrate reset` của Prisma 7
 > **không có cờ `--skip-seed`** (chạy vào là nó báo lỗi trợ giúp; nếu chạy được thì nó seed lại dữ liệu).
 > Cách đúng là xoá bằng SQL:
+>
 > ```bash
 > npm run db:wipe-sample
 > # hoac: npx prisma db execute --file scripts/wipe-sample-data.sql
 > ```
+>
 > (file này TRUNCATE toàn bộ bảng nghiệp vụ và xoá 3 tài khoản mẫu, giữ lại tài khoản quản trị thật).
 
-| Vai trò | Email | Mật khẩu |
-| --- | --- | --- |
-| Quản trị viên | `admin@mymusic.local` | `Admin@123456` |
-| Nhân viên | `nhanvien@mymusic.local` | `NhanVien@123456` |
-| Nhân viên | `thuha@mymusic.local` | `NhanVien@123456` |
+| Vai trò       | Email                    | Mật khẩu          |
+| ------------- | ------------------------ | ----------------- |
+| Quản trị viên | `admin@mymusic.local`    | `Admin@123456`    |
+| Nhân viên     | `nhanvien@mymusic.local` | `NhanVien@123456` |
+| Nhân viên     | `thuha@mymusic.local`    | `NhanVien@123456` |
 
 > **Đây là tài khoản MẪU cho môi trường thử nghiệm.** Khi dùng thật, hãy đổi mật khẩu (Hồ sơ cá nhân →
 > Đổi mật khẩu) hoặc seed bằng biến môi trường `SEED_ADMIN_PASSWORD` / `SEED_EMPLOYEE_PASSWORD`.
@@ -599,48 +604,49 @@ src/
 
 ## 7. API chính
 
-| Method | Endpoint | Quyền | Mô tả |
-| --- | --- | --- | --- |
-| GET | `/api/health` | public | Kiểm tra kết nối CSDL (dùng cho Docker healthcheck) |
-| GET | `/api/files/*` | public | Phục vụ file nhạc/ảnh trong storage (HTTP Range để tua) |
-| POST | `/api/metadata` | ADMIN | Lấy metadata từ YouTube/SoundCloud/TikTok |
-| POST | `/api/upload` | ADMIN | Tải file nhạc/ảnh lên storage |
-| GET | `/api/songs` | public (khách cũng xem được) | Danh sách bài nhạc đã xuất bản |
-| POST | `/api/songs` | ADMIN | Thêm bài nhạc |
-| GET | `/api/songs/:id` | public | Chi tiết bài nhạc (khách chỉ thấy bài đã xuất bản) |
-| PATCH/DELETE | `/api/songs/:id` | ADMIN | Cập nhật, xoá bài nhạc |
-| POST | `/api/songs/:id/duration` | public | Cập nhật thời lượng khi trình phát báo về |
-| POST | `/api/songs/:id/favorite` | user | Bật/tắt yêu thích |
-| GET | `/api/favorites` | user | Danh sách bài nhạc yêu thích |
-| GET/POST/DELETE | `/api/history` | user | Lịch sử nghe / ghi nhận lượt nghe / xoá toàn bộ |
-| DELETE | `/api/history/:id` | user | Xoá một mục lịch sử |
-| GET | `/api/genres` | public | Danh sách thể loại |
-| POST | `/api/genres` | ADMIN | Thêm thể loại |
-| PATCH/DELETE | `/api/genres/:id` | ADMIN | Sửa / xoá thể loại |
-| GET | `/api/playlists` | public (khách chỉ thấy playlist công khai) | Playlist của tôi + playlist công khai |
-| POST | `/api/playlists` | user | Tạo playlist |
-| GET | `/api/playlists/:id` | public nếu playlist công khai, ngược lại chủ sở hữu/ADMIN | Chi tiết playlist |
-| PATCH/DELETE | `/api/playlists/:id` | chủ sở hữu hoặc ADMIN | Sửa / xoá |
-| POST/PUT | `/api/playlists/:id/songs` | chủ sở hữu | Thêm bài / sắp xếp lại |
-| DELETE | `/api/playlists/:id/songs/:songId` | chủ sở hữu | Xoá bài khỏi playlist |
-| GET/PATCH | `/api/me` | user | Thông tin / cập nhật hồ sơ |
-| POST | `/api/me/password` | user | Đổi mật khẩu |
-| GET/POST | `/api/employees` | ADMIN | Danh sách / tạo nhân viên |
-| PATCH/DELETE | `/api/employees/:id` | ADMIN | Cập nhật vai trò, trạng thái / xoá |
-| POST | `/api/employees/:id/password` | ADMIN | Đặt lại mật khẩu |
-| GET/PUT | `/api/admin/settings` | ADMIN | Đọc / ghi cấu hình hệ thống |
-| GET | `/api/admin/stats` | ADMIN | Số liệu dashboard |
-| GET | `/api/search?q=` | public | Tìm kiếm nhanh |
-| POST | `/api/songs/bulk` | ADMIN | Xoá / ẩn / phát hành nhiều bài nhạc cùng lúc |
-| POST | `/api/playlists/bulk` | chủ sở hữu hoặc ADMIN | Xoá nhiều playlist cùng lúc |
-| POST | `/api/history/bulk` | user | Xoá nhiều mục trong lịch sử nghe của mình |
+| Method          | Endpoint                           | Quyền                                                     | Mô tả                                                   |
+| --------------- | ---------------------------------- | --------------------------------------------------------- | ------------------------------------------------------- |
+| GET             | `/api/health`                      | public                                                    | Kiểm tra kết nối CSDL (dùng cho Docker healthcheck)     |
+| GET             | `/api/files/*`                     | public                                                    | Phục vụ file nhạc/ảnh trong storage (HTTP Range để tua) |
+| POST            | `/api/metadata`                    | ADMIN                                                     | Lấy metadata từ YouTube/SoundCloud/TikTok               |
+| POST            | `/api/upload`                      | ADMIN                                                     | Tải file nhạc/ảnh lên storage                           |
+| GET             | `/api/songs`                       | public (khách cũng xem được)                              | Danh sách bài nhạc đã xuất bản                          |
+| POST            | `/api/songs`                       | ADMIN                                                     | Thêm bài nhạc                                           |
+| GET             | `/api/songs/:id`                   | public                                                    | Chi tiết bài nhạc (khách chỉ thấy bài đã xuất bản)      |
+| PATCH/DELETE    | `/api/songs/:id`                   | ADMIN                                                     | Cập nhật, xoá bài nhạc                                  |
+| POST            | `/api/songs/:id/duration`          | public                                                    | Cập nhật thời lượng khi trình phát báo về               |
+| POST            | `/api/songs/:id/favorite`          | user                                                      | Bật/tắt yêu thích                                       |
+| GET             | `/api/favorites`                   | user                                                      | Danh sách bài nhạc yêu thích                            |
+| GET/POST/DELETE | `/api/history`                     | user                                                      | Lịch sử nghe / ghi nhận lượt nghe / xoá toàn bộ         |
+| DELETE          | `/api/history/:id`                 | user                                                      | Xoá một mục lịch sử                                     |
+| GET             | `/api/genres`                      | public                                                    | Danh sách thể loại                                      |
+| POST            | `/api/genres`                      | ADMIN                                                     | Thêm thể loại                                           |
+| PATCH/DELETE    | `/api/genres/:id`                  | ADMIN                                                     | Sửa / xoá thể loại                                      |
+| GET             | `/api/playlists`                   | public (khách chỉ thấy playlist công khai)                | Playlist của tôi + playlist công khai                   |
+| POST            | `/api/playlists`                   | user                                                      | Tạo playlist                                            |
+| GET             | `/api/playlists/:id`               | public nếu playlist công khai, ngược lại chủ sở hữu/ADMIN | Chi tiết playlist                                       |
+| PATCH/DELETE    | `/api/playlists/:id`               | chủ sở hữu hoặc ADMIN                                     | Sửa / xoá                                               |
+| POST/PUT        | `/api/playlists/:id/songs`         | chủ sở hữu                                                | Thêm bài / sắp xếp lại                                  |
+| DELETE          | `/api/playlists/:id/songs/:songId` | chủ sở hữu                                                | Xoá bài khỏi playlist                                   |
+| GET/PATCH       | `/api/me`                          | user                                                      | Thông tin / cập nhật hồ sơ                              |
+| POST            | `/api/me/password`                 | user                                                      | Đổi mật khẩu                                            |
+| GET/POST        | `/api/employees`                   | ADMIN                                                     | Danh sách / tạo nhân viên                               |
+| PATCH/DELETE    | `/api/employees/:id`               | ADMIN                                                     | Cập nhật vai trò, trạng thái / xoá                      |
+| POST            | `/api/employees/:id/password`      | ADMIN                                                     | Đặt lại mật khẩu                                        |
+| GET/PUT         | `/api/admin/settings`              | ADMIN                                                     | Đọc / ghi cấu hình hệ thống                             |
+| GET             | `/api/admin/stats`                 | ADMIN                                                     | Số liệu dashboard                                       |
+| GET             | `/api/search?q=`                   | public                                                    | Tìm kiếm nhanh                                          |
+| POST            | `/api/songs/bulk`                  | ADMIN                                                     | Xoá / ẩn / phát hành nhiều bài nhạc cùng lúc            |
+| POST            | `/api/playlists/bulk`              | chủ sở hữu hoặc ADMIN                                     | Xoá nhiều playlist cùng lúc                             |
+| POST            | `/api/history/bulk`                | user                                                      | Xoá nhiều mục trong lịch sử nghe của mình               |
+
 ---
 
 ## 8. Bảo mật
 
 - **Phân quyền 2 lớp**: `proxy.ts` chặn theo vai trò ở tầng request, các trang server và route handler
   kiểm tra lại quyền (defense in depth). Nhân viên không thể gọi API quản trị.
-- **Phạm vi truy cập của khách**: chỉ các endpoint *đọc* cần thiết để nghe nhạc và các trang công khai
+- **Phạm vi truy cập của khách**: chỉ các endpoint _đọc_ cần thiết để nghe nhạc và các trang công khai
   (`/music`, `/music/discover`, `/music/search`, `/login`) được mở; mọi API cá nhân/quản trị trả **401**,
   các trang cá nhân chuyển hướng về `/login`. Playlist riêng tư trả **403** với khách.
 - **Mật khẩu** hash bằng bcrypt (12 rounds); đổi mật khẩu yêu cầu xác thực mật khẩu hiện tại.
@@ -666,20 +672,20 @@ src/
 
 Repo đã có sẵn **`render.yaml`** (Render Blueprint) nên các bước chỉ còn là tạo CSDL và bấm deploy:
 
-1. **Tạo database trên Neon**: đăng nhập [neon.tech](https://neon.tech) → *New Project* (chọn region gần
-   Việt Nam, ví dụ *Singapore*) → mở **Connection string**, chọn **Pooled connection** → sao chép chuỗi
+1. **Tạo database trên Neon**: đăng nhập [neon.tech](https://neon.tech) → _New Project_ (chọn region gần
+   Việt Nam, ví dụ _Singapore_) → mở **Connection string**, chọn **Pooled connection** → sao chép chuỗi
    `postgresql://...@ep-xxx-pooler....neon.tech/neondb?sslmode=require`.
-2. **Tạo web service trên Render**: *New +* → **Blueprint** → chọn repo này → Render đọc `render.yaml` và
+2. **Tạo web service trên Render**: _New +_ → **Blueprint** → chọn repo này → Render đọc `render.yaml` và
    hỏi 2 biến (2 biến còn lại tự sinh/nội bộ):
    - `DATABASE_URL` = chuỗi Neon vừa sao chép
    - `AUTH_URL` = `https://<tên-dịch-vụ>.onrender.com` (đổi lại sau khi gắn tên miền riêng)
 3. Bấm **Apply**. Build tự chạy: `npm ci` → `prisma generate` → **`prisma migrate deploy`** (tạo bảng trên
    Neon) → `next build`; sau đó `next start`. Health check dùng `/api/health`.
-4. **Tạo tài khoản đăng nhập** — chọn một trong hai (chạy ở Render → service → tab *Shell*):
+4. **Tạo tài khoản đăng nhập** — chọn một trong hai (chạy ở Render → service → tab _Shell_):
    - **Có dữ liệu mẫu**: `npm run db:seed` → tạo admin `admin@mymusic.local / Admin@123456` + ~24 bài.
    - **Thư viện trắng, tự thêm bài sau**: `npm run admin:create -- --email ban@congty.vn --password "MatKhauManh@2026" --name "Tên bạn"`
      — **bắt buộc** làm bước này nếu không seed, vì CSDL trắng thì không có tài khoản nào để đăng nhập.
-5. **Gắn tên miền riêng**: Render → service → *Settings → Custom Domains* → nhập `nhac.congty.vn`, rồi tạo
+5. **Gắn tên miền riêng**: Render → service → _Settings → Custom Domains_ → nhập `nhac.congty.vn`, rồi tạo
    bản ghi DNS **CNAME** `nhac` → `<tên-dịch-vụ>.onrender.com` (dùng domain gốc thì thêm bản ghi `A`).
    Render tự cấp HTTPS. **Sau khi đổi tên miền phải cập nhật `AUTH_URL=https://nhac.congty.vn`** rồi
    deploy lại — sai `AUTH_URL` là cookie đăng nhập gắn nhầm tên miền và người dùng bị đá ra liên tục.
@@ -734,6 +740,8 @@ npm run db:check      # Kiem tra ket noi PostgreSQL + liet ke bang + dem user
 npm run admin:create  # Tao tai khoan quan tri (khong can seed) - them --dry-run de kiem tra tham so
 npm run env:write     # Sinh lai file .env chuan (AUTH_SECRET ngau nhien)
 npm run smoke         # Smoke test API (chay khi server dang bat)
+                      # LUU Y: mac dinh dang nhap bang tai khoan mau cua seed; neu khong seed thi dat
+                      #   $env:SMOKE_EMAIL / $env:SMOKE_PASSWORD (PowerShell) truoc khi chay
 npm run bench         # Do toc do cac trang chinh (chay khi server dang bat)
 npm run verify        # Build + start server + smoke test tu dong (Windows)
 npm run check:guest   # Kiem tra quyen cua khach (chay khi server dang bat)
@@ -802,22 +810,22 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 
 ## 11. Xử lý sự cố
 
-| Hiện tượng | Nguyên nhân thường gặp | Cách xử lý |
-| --- | --- | --- |
-| `Thiếu biến môi trường DATABASE_URL` | Chưa tạo `.env` | Sao chép `.env.example` → `.env` rồi dán chuỗi kết nối Neon |
-| `ECONNREFUSED` / timeout khi kết nối CSDL | Sai host/port, mạng chặn 5432, hoặc Neon đang "ngủ" | Kiểm tra chuỗi kết nối (phải có `-pooler` và `sslmode=require`), rồi chạy `npm run db:check` |
-| `password authentication failed` | Sai mật khẩu trong `DATABASE_URL` | Neon → *Reset password* → dán lại chuỗi mới vào `.env` (lưu ý `npm run env:write` giữ nguyên `DATABASE_URL` cũ) |
-| `SSL required` / `no pg_hba.conf entry` | Thiếu `?sslmode=require` | Thêm `?sslmode=require` vào cuối `DATABASE_URL` |
-| Tìm kiếm gõ đúng mà không ra bài | Thiếu `mode: "insensitive"` — PostgreSQL phân biệt hoa/thường | Giữ `mode: "insensitive"` ở `song.service.ts` / `song-discovery.service.ts` (xem mục 12) |
-| Bài tải lên biến mất sau khi deploy Render | Ổ đĩa của gói free là tạm thời | Chuyển `STORAGE_DRIVER=s3` (+ các biến `S3_*`) hoặc gắn Render Disk |
-| Đăng nhập chạy ở localhost nhưng lỗi trên tên miền | `AUTH_URL` chưa khớp tên miền thật | Đặt `AUTH_URL=https://<tên miền>`, `AUTH_USE_SECURE_COOKIES=true` rồi deploy lại |
-| Không lấy được metadata YouTube | Video bị giới hạn/không tồn tại | Nhập tay thông tin bài nhạc; kiểm tra mạng và host allowlist |
-| SoundCloud báo *“Không tìm thấy bài nhạc này”* | Link đã bị xoá / đổi đường dẫn / đặt riêng tư | Dán lại link từ trang SoundCloud đang mở được; kiểm tra bằng `npm run metadata:check <url>` |
-| SoundCloud thiếu thời lượng | Chưa có thời lượng trong dữ liệu công khai | Bấm **“Bổ sung thông tin từ SoundCloud”**, hoặc để hệ thống tự cập nhật khi phát lần đầu (thời lượng thật do Widget API báo về). **Không cần API key.** |
-| Cảnh báo *hydration mismatch* với `cz-shortcut-listen` trên `<body>` | Extension trình duyệt (ColorZilla…) tự thêm thuộc tính vào HTML trước khi React hydrate | Đã bỏ qua bằng `suppressHydrationWarning` ở `<body>`; đây không phải lỗi ứng dụng |
-| Nút play không phát nhạc | Trình duyệt chặn autoplay | Bấm play trực tiếp trên giao diện (thao tác người dùng thật) |
-| TikTok không đổi được âm lượng | Giới hạn của TikTok Embed Player | Dùng nút tắt/bật tiếng; hệ thống hiển thị ghi chú tương ứng |
-| File upload không phát được | File vượt giới hạn hoặc sai định dạng | Kiểm tra `UPLOAD_MAX_BYTES` và định dạng cho phép |
+| Hiện tượng                                                           | Nguyên nhân thường gặp                                                                  | Cách xử lý                                                                                                                                              |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Thiếu biến môi trường DATABASE_URL`                                 | Chưa tạo `.env`                                                                         | Sao chép `.env.example` → `.env` rồi dán chuỗi kết nối Neon                                                                                             |
+| `ECONNREFUSED` / timeout khi kết nối CSDL                            | Sai host/port, mạng chặn 5432, hoặc Neon đang "ngủ"                                     | Kiểm tra chuỗi kết nối (phải có `-pooler` và `sslmode=require`), rồi chạy `npm run db:check`                                                            |
+| `password authentication failed`                                     | Sai mật khẩu trong `DATABASE_URL`                                                       | Neon → _Reset password_ → dán lại chuỗi mới vào `.env` (lưu ý `npm run env:write` giữ nguyên `DATABASE_URL` cũ)                                         |
+| `SSL required` / `no pg_hba.conf entry`                              | Thiếu `?sslmode=require`                                                                | Thêm `?sslmode=require` vào cuối `DATABASE_URL`                                                                                                         |
+| Tìm kiếm gõ đúng mà không ra bài                                     | Thiếu `mode: "insensitive"` — PostgreSQL phân biệt hoa/thường                           | Giữ `mode: "insensitive"` ở `song.service.ts` / `song-discovery.service.ts` (xem mục 12)                                                                |
+| Bài tải lên biến mất sau khi deploy Render                           | Ổ đĩa của gói free là tạm thời                                                          | Chuyển `STORAGE_DRIVER=s3` (+ các biến `S3_*`) hoặc gắn Render Disk                                                                                     |
+| Đăng nhập chạy ở localhost nhưng lỗi trên tên miền                   | `AUTH_URL` chưa khớp tên miền thật                                                      | Đặt `AUTH_URL=https://<tên miền>`, `AUTH_USE_SECURE_COOKIES=true` rồi deploy lại                                                                        |
+| Không lấy được metadata YouTube                                      | Video bị giới hạn/không tồn tại                                                         | Nhập tay thông tin bài nhạc; kiểm tra mạng và host allowlist                                                                                            |
+| SoundCloud báo _“Không tìm thấy bài nhạc này”_                       | Link đã bị xoá / đổi đường dẫn / đặt riêng tư                                           | Dán lại link từ trang SoundCloud đang mở được; kiểm tra bằng `npm run metadata:check <url>`                                                             |
+| SoundCloud thiếu thời lượng                                          | Chưa có thời lượng trong dữ liệu công khai                                              | Bấm **“Bổ sung thông tin từ SoundCloud”**, hoặc để hệ thống tự cập nhật khi phát lần đầu (thời lượng thật do Widget API báo về). **Không cần API key.** |
+| Cảnh báo _hydration mismatch_ với `cz-shortcut-listen` trên `<body>` | Extension trình duyệt (ColorZilla…) tự thêm thuộc tính vào HTML trước khi React hydrate | Đã bỏ qua bằng `suppressHydrationWarning` ở `<body>`; đây không phải lỗi ứng dụng                                                                       |
+| Nút play không phát nhạc                                             | Trình duyệt chặn autoplay                                                               | Bấm play trực tiếp trên giao diện (thao tác người dùng thật)                                                                                            |
+| TikTok không đổi được âm lượng                                       | Giới hạn của TikTok Embed Player                                                        | Dùng nút tắt/bật tiếng; hệ thống hiển thị ghi chú tương ứng                                                                                             |
+| File upload không phát được                                          | File vượt giới hạn hoặc sai định dạng                                                   | Kiểm tra `UPLOAD_MAX_BYTES` và định dạng cho phép                                                                                                       |
 
 ---
 
@@ -827,7 +835,7 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
   `@radix-ui/react-checkbox`, `@radix-ui/react-dropdown-menu`...) bọc lại trong `src/components/ui/*`.
   Hộp thoại xác nhận là `useConfirm()` (Promise) dùng chung toàn app; thao tác hàng loạt dùng
   `useRowSelection()` + `<BulkActionBar />` + `<Checkbox />`.
-- **“Nghe tiếp” trên trang chủ**: bảng `listen_history` lưu *mỗi lượt nghe là một dòng*, nên hàm
+- **“Nghe tiếp” trên trang chủ**: bảng `listen_history` lưu _mỗi lượt nghe là một dòng_, nên hàm
   `listRecentlyPlayedSongs()` quét một khoảng lịch sử gần đây rồi lọc trùng theo bài
   (`pickUniqueRecentSongs`) — mỗi bài xuất hiện một lần, theo thứ tự nghe mới nhất.
   Trang `/music/history` thì vẫn liệt kê **từng lượt nghe** kèm thời gian (đúng bản chất nhật ký).
@@ -925,5 +933,3 @@ tra tĩnh cho những quy tắc trên.
 
 Dự án nội bộ, phục vụ mục đích học tập và vận hành trong doanh nghiệp. Nội dung nhạc thuộc bản quyền
 của các nền tảng/chủ sở hữu tương ứng; hệ thống chỉ nhúng qua trình phát chính thức.
-
-

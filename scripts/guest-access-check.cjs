@@ -101,8 +101,14 @@ async function main() {
   // ------------------------------------------------------------ API doc duoc
   const songsResponse = await fetch(`${BASE}/api/songs?pageSize=2`);
   const songs = await songsResponse.json().catch(() => ({}));
+  /*
+   * Thu vien TRONG (chua them bai nao) thi khach khong co gi de xem -> SKIP thay vi FAIL.
+   * Truong hop nay hay gap ngay sau khi trien khai: CSDL sach, quan tri vien tu them bai sau.
+   */
+  const guestSongsVerdict =
+    songsResponse.status !== 200 ? "FAIL" : (songs.items?.length ?? 0) > 0 ? "PASS" : "SKIP";
   results.push(
-    `${songsResponse.status === 200 && songs.items?.length ? "PASS" : "FAIL"} | GET /api/songs (khach) -> ${songsResponse.status} | total ${songs.total} | items ${songs.items?.length}`,
+    `${guestSongsVerdict} | GET /api/songs (khach) -> ${songsResponse.status} | total ${songs.total} | items ${songs.items?.length}${guestSongsVerdict === "SKIP" ? " (thu vien trong - bo qua)" : ""}`,
   );
 
   await expectStatus("API the loai cho khach", "/api/genres", 200);
