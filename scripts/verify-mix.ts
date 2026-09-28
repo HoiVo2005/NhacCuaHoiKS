@@ -321,8 +321,16 @@ async function runDatabaseCheck(): Promise<void> {
       select: { id: true, title: true },
     });
 
-    if (!topSong) {
-      skip("Mix that tren CSDL", "thu vien chua co bai nao phat hanh");
+    /* Thu vien chi co 1 bai thi khong the co "bai tuong tu" -> bo qua, khong bao loi sai */
+    const publishedCount = await prisma.song.count({ where: { isPublished: true } });
+
+    if (!topSong || publishedCount < 2) {
+      skip(
+        "Mix that tren CSDL",
+        topSong
+          ? `thu vien chi co ${publishedCount} bai da phat hanh -> khong the tao mix`
+          : "thu vien chua co bai nao phat hanh",
+      );
     } else {
       const mix = await buildSongMix(topSong.id, { limit: 10 });
 

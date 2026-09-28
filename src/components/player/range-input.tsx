@@ -21,15 +21,7 @@ interface RangeInputProps {
   markerPercent?: number;
   /** Doan tu vi tri nay (% tro len) duoc to mau khac (vung khuech dai) */
   boostFromPercent?: number;
-  /**
-   * `vertical`: thanh truot DUNG cho am luong tren dien thoai - keo len = tang,
-   * keo xuong = giam (giong cac app nhac).
-   */
-  orientation?: "horizontal" | "vertical";
 }
-
-/** Chieu cao co dinh cua thanh truot dung (input sau khi xoay la `w-32`) */
-export const VERTICAL_RANGE_HEIGHT_CLASS = "h-32";
 
 /**
  * Thanh truot dung cho seek / am luong (nen tang native, khong phu thuoc thu vien).
@@ -51,7 +43,6 @@ export function RangeInput({
   title,
   markerPercent,
   boostFromPercent,
-  orientation = "horizontal",
 }: RangeInputProps) {
   const safeMax = max > 0 ? max : 1;
   const percent = Math.min(Math.max((value / safeMax) * 100, 0), 100);
@@ -123,39 +114,6 @@ export function RangeInput({
 
   const normalizedMarker =
     markerPercent === undefined ? null : Math.min(Math.max(markerPercent, 0), 100);
-
-  /*
-   * Thanh truot DUNG (am luong tren dien thoai):
-   * trinh duyet chi ve thanh truot ngang, nen xoay -90deg de thanh thanh doc. Xoay nguoc chieu kim
-   * dong ho lam truc +x (huong to mau `to right`) tro LEN TREN, nho vay phan da keo luon o duoi va
-   * KEO LEN = TANG am luong - dung cam giac nguoi dung. Vung bam rong 26px cho ngon tay.
-   *
-   * `touch-none` la BAT BUOC: panel chua thanh truot co `overflow-y-auto`, neu khong trinh duyet se
-   * hieu thao tac keo DOC la cuon panel va thanh truot khong chay. Chi dat cho ban DOC - ban NGANG
-   * giu nguyen hanh vi cu (keo doc tren thanh thoi gian van cuon trang binh thuong).
-   */
-  if (orientation === "vertical") {
-    return (
-      <span className={cn("relative block w-[26px]", VERTICAL_RANGE_HEIGHT_CLASS, className)}>
-        <input
-          {...sliderProps}
-          className={cn(
-            sliderClass,
-            "touch-none absolute left-1/2 top-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90",
-          )}
-          style={{ background }}
-        />
-
-        {normalizedMarker === null ? null : (
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 h-px w-[10px] -translate-x-1/2 bg-foreground/40"
-            style={{ bottom: `${normalizedMarker}%` }}
-          />
-        )}
-      </span>
-    );
-  }
 
   const slider = (
     <input {...sliderProps} className={cn("w-full", sliderClass, className)} style={{ background }} />

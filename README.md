@@ -245,15 +245,23 @@ Quy ước áp dụng:
   - **Hẹn giờ tắt nhạc**: dưới 640px, menu nhỏ được thay bằng **panel rộng nổi phía trên thanh phát** —
     dùng **cùng bộ class** với panel “Danh sách phát” nên nhìn và bấm giống hệt nhau; đóng bằng nút `X`,
     nút “Đóng” hoặc phím `Esc`. Trên desktop vẫn là menu nhỏ mở lên trên (`side="top"`) như cũ.
+  - Panel và “Danh sách phát” dùng **nền đục** `bg-popover/95` + `backdrop-blur-xl` chứ **không** dùng
+    `.glass`: `.glass` chỉ đặc 72–84% nên trên panel lớn, chữ phía sau lọt qua làm chữ trên panel bị
+    “mờ”, khó đọc (`npm run check:sleep` chặn không cho quay lại `glass safe-bottom`).
   - **Âm lượng**: **icon loa** mở panel có **thanh trượt DỌC** — **kéo lên = to hơn, kéo xuống = nhỏ hơn**,
-    kèm nút Tắt/Bật tiếng và “Tối đa” (mức cao nhất mà nguồn đang phát cho phép). Thanh trượt vẫn là
-    `<input type="range">` native **xoay `-90deg`** nên không thêm thư viện, giữ nguyên vùng chạm 22px;
-    phần đã kéo được tô từ **dưới lên** nên cảm giác kéo đúng chiều.
+    kèm nút Tắt/Bật tiếng và “Tối đa” (mức cao nhất mà nguồn đang phát cho phép). Thanh trượt là component
+    riêng `src/components/player/vertical-volume-slider.tsx`, **chạm vào đâu trong khung 44×160px cũng
+    nhảy tới mức đó rồi kéo tiếp**; kéo lệch ra ngoài khung vẫn tính tiếp (`setPointerCapture`) nên không
+    còn cảnh “kéo không ăn” như bản dùng `<input type="range">` xoay `-90deg` (vùng chạm chỉ 22px, lại bị
+    hiểu là bấm ra ngoài nên panel tự đóng). Panel không tự đóng khi đang kéo
+    (`data-dropdown-keep-open`) và không bị cuộn trang (`touch-none`); dùng được cả bàn phím
+    (`↑`/`↓`/`Home`/`End`) và có `role="slider"` cho trình đọc màn hình.
   - Cả hai dùng hook `useIsMobile()` (`src/hooks/use-is-mobile.ts` — `matchMedia("(max-width: 639px)")`,
     có giá trị riêng cho SSR để không lệch hydration). Phải **chọn một** cách trình bày thay vì render cả
     hai rồi ẩn bằng CSS: bản bị ẩn vẫn nghe sự kiện `mousedown` và sẽ đóng panel đang mở của bản kia.
-  - Kiểm chứng bằng `npm run check:sleep` và `npm run check:volume` (có cả phép thử render DOM thật của
-    thanh trượt dọc trước khi phát hành).
+  - Kiểm chứng bằng `npm run check:sleep` và `npm run check:volume` (có phép thử **toán học** vị trí ngón
+    tay → mức âm lượng: đáy = 0%, đỉnh = 100%, kéo ra ngoài bị kẹp trong khoảng, khung cao 0 thì không
+    chia cho 0; kèm kiểm tra khung chạm 44×160px và có `setPointerCapture`).
 
 Độ bền của trình phát (kiểm chứng bằng `npm run check:youtube`):
 

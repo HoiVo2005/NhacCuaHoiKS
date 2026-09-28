@@ -10,6 +10,7 @@ import path from "node:path";
 
 import { AudioEngine } from "../src/components/player/engines/audio-engine";
 import { TikTokEngine } from "../src/components/player/engines/tiktok-engine";
+import { ratioFromPointer, volumeFromRatio } from "../src/components/player/vertical-volume-slider";
 import {
   canBoostVolume,
   clampVolume,
@@ -389,6 +390,7 @@ async function main(): Promise<void> {
   const fullPlayer = read("src/components/player/full-player.tsx");
   const audioEngine = read("src/components/player/engines/audio-engine.ts");
   const rangeInput = read("src/components/player/range-input.tsx");
+const verticalSlider = read("src/components/player/vertical-volume-slider.tsx");
   const soundcloudEngine = read("src/components/player/engines/soundcloud-engine.ts");
   const constants = read("src/lib/constants.ts");
 
@@ -427,31 +429,75 @@ async function main(): Promise<void> {
     playerBar.includes('className="flex items-center gap-2 sm:hidden" data-mobile-volume') &&
       (playerBar.match(/max=\{volumeMax\}/g) ?? []).length >= 2,
   );
+  const closeTo = (value: number, expected: number, epsilon = 1e-9): boolean =>
+    Math.abs(value - expected) < epsilon;
+
   check(
     "Dien thoai: icon loa mo panel co thanh truot DUNG (keo len = to hon, keo xuong = nho hon)",
-    playerBar.includes('orientation="vertical"') &&
+    playerBar.includes("<VerticalVolumeSlider") &&
       playerBar.includes("<Dropdown") &&
       playerBar.includes('side="top"') &&
-      playerBar.includes("Kéo lên/xuống") &&
+      playerBar.includes("Kéo lên để to hơn") &&
       playerBar.includes("setVolume(volumeMax)") &&
       playerBar.includes("toggleMute()"),
   );
   check(
-    "Thanh truot dung: xoay -90deg (khong them thu vien) va giu vung cham 22px",
-    rangeInput.includes("VERTICAL_RANGE_HEIGHT_CLASS") &&
-      rangeInput.includes('orientation === "vertical"') &&
-      rangeInput.includes("-rotate-90") &&
-      rangeInput.includes("sliderProps"),
+    "Thanh truot dung: KHONG con input xoay -90deg (vung cham 22px nen keo bi truot ra ngoai)",
+    !playerBar.includes('orientation="vertical"') &&
+      !rangeInput.includes("orientation") &&
+      !rangeInput.includes("-rotate-90"),
   );
   check(
-    "Thanh truot dung tren cam ung: `touch-none` de khong bi hieu thanh CUON PANEL",
-    rangeInput.includes('"touch-none absolute left-1/2 top-1/2 w-32 -translate-x-1/2 -translate-y-1/2 -rotate-90"') &&
+    "Thanh truot dung: khung cham 44x160px + keo bang pointer events (setPointerCapture)",
+    verticalSlider.includes(
+      '"relative h-40 w-11 shrink-0 cursor-pointer touch-none select-none rounded-2xl bg-surface/70 outline-none"',
+    ) &&
+      verticalSlider.includes("setPointerCapture(event.pointerId)") &&
+      verticalSlider.includes("onPointerMove") &&
+      verticalSlider.includes("hasPointerCapture(event.pointerId)"),
+  );
+  check(
+    "Thanh truot dung: `touch-none` + `data-dropdown-keep-open` (khong cuon panel, panel khong tu dong khi keo)",
+    verticalSlider.includes("touch-none") &&
+      verticalSlider.includes("data-dropdown-keep-open") &&
       // Ban NGANG khong duoc dat touch-none (keo doc tren thanh thoi gian van cuon trang)
-      rangeInput.includes('className={cn("w-full", sliderClass, className)}'),
+      !rangeInput.includes("touch-none"),
   );
   check(
-    "Thanh truot dung: vach moc ve tu DAY len (moc 100% khong bi lech)",
-    rangeInput.includes("style={{ bottom: `${normalizedMarker}%` }}"),
+    "Thanh truot dung: tinh am luong theo VI TRI ngon tay (day = 0%, dinh = 100%)",
+    ratioFromPointer({ clientY: 260, top: 100, height: 160 }) === 0 &&
+      ratioFromPointer({ clientY: 180, top: 100, height: 160 }) === 0.5 &&
+      ratioFromPointer({ clientY: 100, top: 100, height: 160 }) === 1 &&
+      // Keo ra ngoai khung: kep trong 0..1 (khong vo am luong)
+      ratioFromPointer({ clientY: 0, top: 100, height: 160 }) === 1 &&
+      ratioFromPointer({ clientY: 999, top: 100, height: 160 }) === 0 &&
+      // Khung chua do xong (cao 0) -> khong chia cho 0
+      ratioFromPointer({ clientY: 10, top: 10, height: 0 }) === 0,
+  );
+  check(
+    "Thanh truot dung: lam tron theo buoc va khong vuot qua muc toi da",
+    closeTo(volumeFromRatio(0.5, 1, 0.01), 0.5) &&
+      volumeFromRatio(0.6, 1, 0.5) === 0.5 &&
+      volumeFromRatio(0.74, 1, 0.25) === 0.75 &&
+      // Cham tren dinh -> dung bang max (khong 2.0000000000000004)
+      volumeFromRatio(1, 2, 0.05) === 2 &&
+      volumeFromRatio(2, 1, 0.01) === 1 &&
+      volumeFromRatio(0.5, 0, 0.01) === 0,
+  );
+  check(
+    "Thanh truot dung: van co vach moc 100% va vung khuech dai to mau khac",
+    verticalSlider.includes("bg-foreground/40") &&
+      verticalSlider.includes("bottom: `${markerPercent}%`") &&
+      verticalSlider.includes("bg-[var(--brand-alt)]") &&
+      playerBar.includes("markerPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}"),
+  );
+  check(
+    "Thanh truot dung: dung duoc bang ban phim va doc duoc bang trinh doc man hinh",
+    verticalSlider.includes('role="slider"') &&
+      verticalSlider.includes('aria-orientation="vertical"') &&
+      verticalSlider.includes("aria-valuenow") &&
+      verticalSlider.includes('event.key === "ArrowUp"') &&
+      verticalSlider.includes('event.key === "End"'),
   );
   check(
     "Thanh truot ngang khong bi doi hanh vi (van dung chung `sliderProps`)",

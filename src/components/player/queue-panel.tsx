@@ -36,7 +36,7 @@ export function QueuePanel() {
   const totalDuration = queue.reduce((total, song) => total + (song.durationSeconds || 0), 0);
 
   return (
-    <aside className="glass safe-bottom animate-slide-up fixed bottom-36 right-3 z-[60] flex max-h-[68vh] w-[min(93vw,380px)] flex-col overflow-hidden rounded-2xl border border-border/80 shadow-2xl sm:bottom-24">
+    <aside className="bg-popover/95 backdrop-blur-xl safe-bottom animate-slide-up fixed bottom-36 right-3 z-[60] flex max-h-[68vh] w-[min(93vw,380px)] flex-col overflow-hidden rounded-2xl border border-border/80 shadow-2xl sm:bottom-24">
       <header className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="flex items-center gap-2">
           <ListMusic className="size-4 text-primary" />

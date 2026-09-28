@@ -22,6 +22,7 @@ import {
 
 import { MixButton } from "@/components/player/mix-button";
 import { SleepTimerButton } from "@/components/player/sleep-timer-button";
+import { VerticalVolumeSlider } from "@/components/player/vertical-volume-slider";
 import { RangeInput } from "@/components/player/range-input";
 import { FavoriteButton } from "@/components/music/favorite-button";
 import { Artwork } from "@/components/ui/artwork";
@@ -337,7 +338,7 @@ export function PlayerBar() {
           <Dropdown
             side="top"
             align="right"
-            className="w-auto p-2"
+            className="p-3"
             trigger={
               <button
                 type="button"
@@ -352,31 +353,29 @@ export function PlayerBar() {
               </button>
             }
           >
-            <div className="flex flex-col items-center gap-1.5 px-1 pb-1">
-              <span className="text-[11px] font-semibold tabular-nums text-foreground">
-                {formatVolumePercent(muted ? 0 : displayVolume)}
-              </span>
-
-              <RangeInput
-                orientation="vertical"
+            <div className="flex items-start gap-4">
+              <VerticalVolumeSlider
                 value={muted ? 0 : displayVolume}
                 max={volumeMax}
                 step={VOLUME_STEP}
                 markerPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
-                boostFromPercent={canBoost ? VOLUME_MARKER_PERCENT : undefined}
-                title={`Âm lượng ${formatVolumePercent(muted ? 0 : displayVolume)} (tối đa ${formatVolumePercent(volumeMax)})`}
                 onChange={(value) => usePlayerStore.getState().setVolume(value)}
-                className="my-1"
               />
 
-              <span className="text-[10px] text-muted-foreground">Kéo lên/xuống</span>
+              <div className="flex min-w-28 flex-col gap-2">
+                <span className="text-base font-semibold tabular-nums text-foreground">
+                  {formatVolumePercent(muted ? 0 : displayVolume)}
+                </span>
+                <span className="text-[10px] leading-snug text-muted-foreground">
+                  Kéo lên để to hơn, kéo xuống để nhỏ hơn · tối đa{" "}
+                  {formatVolumePercent(volumeMax)}
+                </span>
 
-              <div className="flex gap-1">
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className="h-7 px-2 text-xs"
+                  className="h-8 justify-start px-2.5 text-xs"
                   onClick={() => usePlayerStore.getState().toggleMute()}
                 >
                   {muted ? "Bật tiếng" : "Tắt tiếng"}
@@ -385,7 +384,7 @@ export function PlayerBar() {
                   type="button"
                   size="sm"
                   variant="secondary"
-                  className="h-7 px-2 text-xs"
+                  className="h-8 justify-start px-2.5 text-xs"
                   title="Đặt mức tối đa của nguồn đang phát"
                   onClick={() => usePlayerStore.getState().setVolume(volumeMax)}
                 >

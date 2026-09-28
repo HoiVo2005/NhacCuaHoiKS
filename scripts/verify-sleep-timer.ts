@@ -382,8 +382,14 @@ check(
   "Panel hen gio va panel Danh sach phat dung CUNG bo class (nhin giong nhau)",
   queuePanelSource.includes("fixed bottom-36 right-3") &&
     buttonSource.includes("fixed bottom-36 right-3") &&
-    queuePanelSource.includes("glass safe-bottom animate-slide-up") &&
-    buttonSource.includes("glass safe-bottom animate-slide-up"),
+    queuePanelSource.includes("bg-popover/95 backdrop-blur-xl safe-bottom animate-slide-up") &&
+    buttonSource.includes("bg-popover/95 backdrop-blur-xl safe-bottom animate-slide-up"),
+);
+check(
+  "Panel mobile phai DUC: khong dung `glass safe-bottom` (mo 16-28% + blur 16px lam chu bi nhoe)",
+  !queuePanelSource.includes("glass safe-bottom") &&
+    !buttonSource.includes("glass safe-bottom") &&
+    buttonSource.includes("Nen DUC"),
 );
 check(
   "Desktop van la menu nho mo len tren (khong doi hanh vi cu)",

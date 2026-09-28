@@ -158,7 +158,6 @@ export function SleepTimerButton() {
 
     document.addEventListener("keydown", handleKey);
     return () => document.removeEventListener("keydown", handleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isMobile, open]);
 
   /** Nut hen gio tren thanh phat (dung chung cho menu desktop va panel mobile) */
@@ -370,7 +369,11 @@ export function SleepTimerButton() {
           <div
             role="dialog"
             aria-label="Hẹn giờ tắt nhạc"
-            className="glass safe-bottom animate-slide-up fixed bottom-36 right-3 z-[60] flex max-h-[68vh] w-[min(93vw,380px)] flex-col overflow-hidden rounded-2xl border border-border/80 shadow-2xl sm:bottom-24"
+            /*
+             * Nen DUC (bg-popover/95) chu khong dung `.glass`: `.glass` chi dac 72-84% + blur 16px,
+             * tren panel lon se nhin thay chu phia sau -> nguoi dung thay "mo", kho doc.
+             */
+            className="bg-popover/95 backdrop-blur-xl safe-bottom animate-slide-up fixed bottom-36 right-3 z-[60] flex max-h-[68vh] w-[min(93vw,380px)] flex-col overflow-hidden rounded-2xl border border-border/80 shadow-2xl sm:bottom-24"
           >
             <header className="flex items-start justify-between gap-2 border-b border-border/70 px-4 py-3">
               <div className="flex items-center gap-2">
