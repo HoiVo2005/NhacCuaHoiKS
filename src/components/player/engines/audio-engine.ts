@@ -1,4 +1,5 @@
 import type { SongDTO } from "@/types";
+import { applyBackgroundAudioSession } from "@/lib/audio-session";
 import { clampSeekTarget } from "@/lib/seek";
 import { EMBED_MAX_VOLUME, MAX_VOLUME } from "@/lib/volume";
 
@@ -170,6 +171,12 @@ export class AudioEngine implements PlayerEngine {
   }
 
   async play(): Promise<void> {
+    /*
+     * Khai báo audio "nghe nhạc" TRƯỚC khi phát (iOS): nhờ vậy khi app bị đưa ra nền/khoá màn hình,
+     * iOS không treo âm thanh của trang nữa (xem `src/lib/audio-session.ts`).
+     */
+    applyBackgroundAudioSession();
+
     // Do thi khuech dai (neu can) phai tao trong hanh dong nguoi dung de duoc phep phat
     this.ensureGraph();
     if (this.graph && this.graph.context.state === "suspended") {

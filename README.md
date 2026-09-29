@@ -241,6 +241,20 @@ Quy ước áp dụng:
   - Luật nằm ở `src/lib/media-session.ts`, cầu nối ở `src/components/player/media-session-bridge.tsx` —
     kiểm chứng bằng `npm run check:media`.
 
+- **Nghe nhạc khi thoát app ra ngoài (iPhone/iPad đã “Thêm vào màn hình chính”)**: iOS coi Web Audio
+  (`AudioContext`) là âm thanh **“ambient”** nên **chặn ngay khi app không còn ở tiền cảnh** — đang nghe mà
+  thoát ra là nhạc dừng. Trình phát đặt `navigator.audioSession.type = "playback"` (Audio Session API,
+  Safari 16.4+) ngay khi mở app và trước mỗi lần phát, nhờ vậy iOS coi đây là **audio nghe nhạc**:
+  - Phát tiếp khi app ra nền / khoá màn hình: thẻ `<audio>` (file tải lên) cần **iOS 15.4+**; khi âm lượng
+    **dưới 100%**, app dùng Web Audio để giảm âm lượng nên cần **iOS 17.5+** (WebKit bug 261554). Với iOS cũ
+    hơn, mẹo: bấm **“Tối đa”** để về đúng 100% (không còn dùng Web Audio) là nghe nền được.
+  - **Không bị công tắc chuông (im lặng) tắt tiếng** nữa; bài/nghệ sĩ và nút điều khiển vẫn hiện trên màn hình khoá.
+  - **Nguồn nhúng (YouTube/SoundCloud/TikTok) KHÔNG nghe được ở nền**: âm thanh nằm trong `iframe` và iOS
+    treo `iframe` khi app ra nền — chỉ **file tải lên** mới nghe nền được. Vuốt app lên để tắt hẳn thì nhạc
+    dừng, đây là giới hạn chung của web app (không có quyền chạy nền như app native).
+  - Luật nằm ở `src/lib/audio-session.ts`, gọi từ `player-engine.tsx` và `audio-engine.ts` — kiểm chứng
+    bằng `npm run check:media`.
+
 - **Trình bày trên điện thoại** (hai chỗ trước đây khó dùng, đã sửa):
   - **Hẹn giờ tắt nhạc**: dưới 640px, menu nhỏ được thay bằng **panel rộng nổi phía trên thanh phát** —
     dùng **cùng bộ class** với panel “Danh sách phát” nên nhìn và bấm giống hệt nhau; đóng bằng nút `X`,

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 
 import { useSessionUser } from "@/components/auth/session-context";
+import { applyBackgroundAudioSession } from "@/lib/audio-session";
 import { formatDuration } from "@/lib/format";
 import { resumeSecondsFor } from "@/lib/resume";
 import { cn } from "@/lib/utils";
@@ -252,6 +253,17 @@ export function PlayerEngine() {
       if (timeoutId !== null) window.clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /*
+   * iOS/Safari: khai báo audio của trang là "nghe nhạc" ngay khi mở app.
+   *
+   * Phải làm SỚM (trước khi đồ thị âm lượng `AudioContext` được tạo) vì iOS xếp Web Audio vào nhóm
+   * "ambient" và chặn nó khi trang không còn ở tiền cảnh -> đang nghe mà thoát app ra là nhạc dừng.
+   * Xem `src/lib/audio-session.ts` để biết giới hạn theo phiên bản iOS.
+   */
+  useEffect(() => {
+    applyBackgroundAudioSession();
   }, []);
 
   // Nap bai nhac khi bai hien tai thay doi

@@ -11,6 +11,11 @@ import {
   mediaSessionInfoFor,
   shouldRefreshMediaPosition,
 } from "@/lib/media-session";
+import {
+  enableBackgroundAudioSession,
+  supportsBackgroundAudioSession,
+  type AudioSessionType,
+} from "@/lib/audio-session";
 import type { SongDTO, SourceType } from "@/types";
 
 /**
@@ -226,6 +231,72 @@ check(
 check(
   "Tam dung / vua tua -> cap nhat ngay (man hinh khoa hien dung vi tri)",
   shouldRefreshMediaPosition({ isPlaying: false, positionSeconds: 45, lastSeconds: 42, lastAt: 1_000, now: 1_500 }),
+);
+
+/* ------------- 6. Nghe nhac khi app ra nen (iOS Audio Session API) ------------- */
+
+const audioSessionSource = source("src/lib/audio-session.ts");
+const audioEngineSource = source("src/components/player/engines/audio-engine.ts");
+const engineSource = source("src/components/player/player-engine.tsx");
+
+check(
+  "Trinh duyet cu (khong co audioSession) -> bo qua, khong vo trang",
+  !supportsBackgroundAudioSession(null) &&
+    !supportsBackgroundAudioSession(undefined) &&
+    !supportsBackgroundAudioSession({}) &&
+    !enableBackgroundAudioSession({}),
+);
+
+const audioSessionHost = { audioSession: { type: "auto" as AudioSessionType } };
+check(
+  "Safari 16.4+: dat type = playback (iOS khong con coi la am thanh nen/ambient)",
+  supportsBackgroundAudioSession(audioSessionHost) && enableBackgroundAudioSession(audioSessionHost),
+  audioSessionHost.audioSession.type,
+);
+
+/* Trinh duyet co API nhung bo qua viec dat gia tri -> khong duoc bao thanh cong gia */
+const ignoringHost = { audioSession: { type: "ambient" as AudioSessionType } };
+Object.defineProperty(ignoringHost.audioSession, "type", {
+  get: () => "ambient",
+  set: () => undefined,
+  configurable: true,
+});
+check("Trinh duyet bo qua viec dat type -> tra ve false", !enableBackgroundAudioSession(ignoringHost));
+
+/* Truy cap `navigator.audioSession` nem loi -> khong duoc lam hong trinh phat */
+const throwingHost = {
+  get audioSession(): { type: AudioSessionType } {
+    throw new Error("khong cho doc");
+  },
+};
+check(
+  "Trinh duyet nem loi khi truy cap audioSession -> tra ve false (khong lam hong trinh phat)",
+  !enableBackgroundAudioSession(throwingHost),
+);
+
+check(
+  "Dat phien audio TRUOC khi tao do thi am luong va phat file tai len",
+  audioEngineSource.includes("applyBackgroundAudioSession();") &&
+    audioEngineSource.indexOf("applyBackgroundAudioSession();") <
+      audioEngineSource.indexOf("this.ensureGraph();"),
+);
+
+check(
+  "Trinh phat dat phien audio ngay khi mount (truoc khi AudioContext duoc tao)",
+  /applyBackgroundAudioSession\(\);\s*\}, \[\]\);/.test(engineSource) &&
+    engineSource.includes('from "@/lib/audio-session"'),
+);
+
+check(
+  "Moi loi goi API deu duoc bao ve (khong lam vo trang tren trinh duyet khong ho tro)",
+  audioSessionSource.includes('session.type = "playback"') && audioSessionSource.includes("} catch {"),
+);
+
+check(
+  "README ghi ro gioi han theo phien ban iOS + nguon nhung khong nghe duoc o nen",
+  readmeSource.includes("audioSession") &&
+    readmeSource.includes("iOS 17.5+") &&
+    readmeSource.includes("KHÔNG nghe được ở nền"),
 );
 
 /* --------------------------------- Ket qua --------------------------------- */
