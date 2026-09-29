@@ -618,6 +618,11 @@ npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 > đều chỉ là **giá trị mẫu**. Mật khẩu thật chỉ nằm trong `.env` (đã bị `.gitignore` chặn) hoặc trong
 > biến môi trường khi triển khai. Lưu ý `npm run env:write` **giữ nguyên `DATABASE_URL` đang có** trong
 > `.env`; muốn đổi CSDL thì truyền `NEW_DATABASE_URL` hoặc sửa tay file `.env`.
+>
+> ⚠️ **Chỉ chạy `npm run env:write` khi tạo `.env` lần đầu (hoặc trên máy dev)**: script giữ lại
+> `DATABASE_URL`/`DIRECT_URL` nhưng **sinh `AUTH_SECRET` mới** và **đưa `STORAGE_*`/`S3_*` về mặc định local**
+> → chạy trên máy chủ đang hoạt động sẽ làm mọi người **bị đăng xuất** và mất cấu hình lưu file.
+> Muốn giữ nguyên phiên đăng nhập thì truyền `NEW_AUTH_SECRET="<chuỗi đang dùng>"`, hoặc sửa tay file `.env`.
 
 - Neon có **branch** giống Git: nên tạo một branch riêng cho dev để thử nghiệm mà không đụng dữ liệu thật.
 - Không cần quyền `sa`/quyền tạo database: tài khoản Neon đã là chủ database của project đó.
