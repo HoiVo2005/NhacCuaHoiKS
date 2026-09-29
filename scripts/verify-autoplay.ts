@@ -10,9 +10,9 @@
 import type { RefObject } from "react";
 
 import { AudioEngine } from "../src/components/player/engines/audio-engine";
+import { isSystemPause } from "../src/lib/background-playback";
 import {
   armSwitchGuard,
-  isUserPause,
   releaseSwitchGuard,
   resolveAutoPlay,
   SWITCH_GUARD_MS,
@@ -175,24 +175,49 @@ async function main(): Promise<void> {
     events.slice(beforePause).join(","),
   );
 
-  // ------------------------------- 5. Bo qua pause trong luc chuyen bai
+  // --------------- 5. Bo qua pause trong luc chuyen bai / khi trang o nen
   const active = { current: false } as RefObject<boolean>;
   const timer = { current: null } as RefObject<number | null>;
 
-  check("Binh thuong: pause la cua nguoi dung", isUserPause(active));
+  /** Trang dang o tien canh va da o do tu lau (khong phai su kien pause den muon cua luc o nen) */
+  const foreground = { documentHidden: false, msSinceVisible: 60_000 };
+
+  check(
+    "Binh thuong: pause la cua nguoi dung",
+    !isSystemPause({ switching: active.current, ...foreground }),
+  );
 
   armSwitchGuard(active, timer, 40);
-  check("Dang chuyen bai: bo qua su kien pause", !isUserPause(active));
+  check(
+    "Dang chuyen bai: bo qua su kien pause",
+    isSystemPause({ switching: active.current, ...foreground }),
+  );
 
   releaseSwitchGuard(active, timer);
-  check("Da phat duoc bai moi: nhan lai su kien pause", isUserPause(active));
+  check(
+    "Da phat duoc bai moi: nhan lai su kien pause",
+    !isSystemPause({ switching: active.current, ...foreground }),
+  );
 
   armSwitchGuard(active, timer, 40);
   await sleep(90);
   check(
     "Bao ve chuyen bai tu het han (khong ket vinh vien)",
-    isUserPause(active),
+    !isSystemPause({ switching: active.current, ...foreground }),
     `mac dinh ${SWITCH_GUARD_MS}ms`,
+  );
+
+  check(
+    "Trang dang o NEN: pause la cua he thong (khong phai nguoi dung bam tam dung)",
+    isSystemPause({ switching: false, documentHidden: true, msSinceVisible: 60_000 }),
+  );
+  check(
+    "Vua quay lai tien canh: su kien pause den muon van la cua he thong",
+    isSystemPause({ switching: false, documentHidden: false, msSinceVisible: 200 }),
+  );
+  check(
+    "Khong tinh duoc khoang thoi gian (NaN) -> coi nhu pause cua nguoi dung",
+    !isSystemPause({ switching: false, documentHidden: false, msSinceVisible: Number.NaN }),
   );
 
   // --------------------------------- 6. Quyet dinh tu phat bai moi

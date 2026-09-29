@@ -1,12 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { toast } from "sonner";
 
 import { useSessionUser } from "@/components/auth/session-context";
-import { applyBackgroundAudioSession } from "@/lib/audio-session";
-import { formatDuration } from "@/lib/format";
-import { resumeSecondsFor } from "@/lib/resume";
+import {
+  applyBackgroundAudioSession,
+  currentAudioSessionHost,
+  isAudioSessionInterrupted,
+  reapplyBackgroundAudioSession,
+  watchAudioSessionState,
+} from "@/lib/audio-session";
+import { isSystemPause, shouldResumePlayback } from "@/lib/background-playback";
 import { cn } from "@/lib/utils";
 import { usePlayerStore, type VideoMode } from "@/store/player-store";
 import type { SongDTO } from "@/types";
@@ -30,7 +34,7 @@ import {
 } from "./history-report";
 
 import { YouTubeEngine } from "./engines/youtube-engine";
-import { armSwitchGuard, isUserPause, releaseSwitchGuard, resolveAutoPlay } from "./switch-guard";
+import { armSwitchGuard, releaseSwitchGuard, resolveAutoPlay } from "./switch-guard";
 
 /** Khung video cua nguon dang phat (moi nguon co mot phan tu rieng o goc trang) */
 function activeVideoContainer(
@@ -87,6 +91,11 @@ export function PlayerEngine() {
   const reportedDurationsRef = useRef<Set<string>>(new Set());
   const switchingRef = useRef(false);
   const switchingTimerRef = useRef<number | null>(null);
+  /**
+   * Thời điểm trang quay lại tiền cảnh (ms) - để nhận ra sự kiện `pause` đến MUỘN của lúc ở nền
+   * (xem `INTERRUPTION_PAUSE_GRACE_MS` trong `src/lib/background-playback.ts`).
+   */
+  const visibleAtRef = useRef(0);
 
   /** Chan gui trung: chi mot request ghi lich su dang bay tai mot thoi diem */
   const historyInFlightRef = useRef(false);
@@ -109,9 +118,25 @@ export function PlayerEngine() {
         }
       },
       onPause: () => {
-        // Su kien pause do chinh viec chuyen bai (thay bai / tam dung dong co khac)
-        // KHONG duoc coi la nguoi dung bam tam dung
-        if (!isUserPause(switchingRef)) return;
+        /*
+         * Chỉ coi là "người dùng bấm tạm dừng" khi KHÔNG có dấu hiệu nào của hệ thống:
+         *  - đang chuyển bài: thay `src` của thẻ <audio> hay tạm dừng động cơ khác cũng bắn `pause`;
+         *  - trang đang ở nền, hoặc vừa mới quay lại tiền cảnh: trình duyệt tự tạm dừng khi ra nền,
+         *    cuộc gọi đến, hoặc ứng dụng khác chiếm quyền phát.
+         *
+         * Nếu lật `isPlaying = false` ở đây thì "ý định đang nghe" bị mất và quay lại app là nhạc nằm
+         * im - đúng lỗi "chuyển sang ứng dụng khác là hết nhạc" (xem `src/lib/background-playback.ts`).
+         */
+        if (
+          isSystemPause({
+            switching: switchingRef.current,
+            documentHidden:
+              typeof document !== "undefined" && document.visibilityState === "hidden",
+            msSinceVisible: Date.now() - visibleAtRef.current,
+          })
+        ) {
+          return;
+        }
 
         if (usePlayerStore.getState().isPlaying) {
           usePlayerStore.setState({ isPlaying: false, isBuffering: false });
@@ -266,6 +291,71 @@ export function PlayerEngine() {
     applyBackgroundAudioSession();
   }, []);
 
+  /**
+   * Nghe nhạc khi chuyển sang tab / ứng dụng khác ("ra nền") - xem `src/lib/background-playback.ts`.
+   *
+   * Trình duyệt coi trang đang ẩn là không còn hoạt động: loại phiên âm thanh có thể bị đưa về `"auto"`
+   * (iOS lại xếp Web Audio vào nhóm âm thanh nền -> đang nghe mà mở app khác là nhạc dừng) và phiên
+   * phát có thể bị tạm dừng. Vì vậy ở đây làm ba việc:
+   *  1. Đặt lại loại phiên âm thanh NGAY lúc trang bị ẩn và mỗi lần quay lại tiền cảnh.
+   *  2. Quay lại tiền cảnh: nếu người dùng vẫn đang nghe thì tự phát tiếp - trình duyệt tự tạm dừng lúc
+   *     ở nền nhưng KHÔNG tự phát lại.
+   *  3. Hệ thống hết ngắt quãng (cuộc gọi kết thúc / ứng dụng khác nhả quyền phát): cũng phát tiếp, vì
+   *     thẻ <audio> có thể đã bị tạm dừng mà không tự chạy lại.
+   */
+  useEffect(() => {
+    /** Phát tiếp nếu người dùng vẫn đang nghe mà phiên phát bị hệ thống tạm dừng */
+    const resumeIfNeeded = (): void => {
+      const state = usePlayerStore.getState();
+      const song = state.current;
+      if (!song) return;
+
+      const shouldResume = shouldResumePlayback({
+        wantsPlaying: state.isPlaying,
+        documentHidden: document.visibilityState === "hidden",
+        audioSessionInterrupted: isAudioSessionInterrupted(currentAudioSessionHost()),
+      });
+      if (!shouldResume) return;
+
+      const engine = enginesRef.current[song.sourceType];
+      if (!engine) return;
+
+      /*
+       * `play()` chứ không `load()`: động cơ đang có sẵn bài trong bộ nhớ, chỉ cần phát tiếp. Với file
+       * tải lên, `AudioEngine.play()` còn đánh thức lại `AudioContext` mà trình duyệt treo lúc ở nền.
+       */
+      void engine.play();
+    };
+
+    const onVisibilityChange = (): void => {
+      // Đặt lại loại phiên âm thanh ngay (lúc trang bị ẩn, trình duyệt thường xoá thiết lập này)
+      reapplyBackgroundAudioSession();
+
+      if (document.visibilityState === "hidden") return;
+
+      visibleAtRef.current = Date.now();
+      resumeIfNeeded();
+    };
+
+    /** Quay lại từ back/forward cache hoặc mở lại tab: cũng phải đặt lại phiên âm thanh */
+    const onPageShow = (): void => {
+      reapplyBackgroundAudioSession();
+      visibleAtRef.current = Date.now();
+      resumeIfNeeded();
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pageshow", onPageShow);
+
+    const unwatchAudioSession = watchAudioSessionState(currentAudioSessionHost(), resumeIfNeeded);
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pageshow", onPageShow);
+      unwatchAudioSession?.();
+    };
+  }, []);
+
   // Nap bai nhac khi bai hien tai thay doi
   useEffect(() => {
     if (!current) return;
@@ -291,35 +381,11 @@ export function PlayerEngine() {
     }
 
     /*
-     * "Nghe tiếp từ chỗ dừng": nếu bài này đã được nghe dở một đoạn (xem `src/lib/resume.ts`) thì
-     * nạp luôn từ vị trí đó. Mọi động cơ đều hỗ trợ `load(song, startAt)` nên chỉ cần truyền vào:
-     * <audio> đặt `currentTime`, YouTube dùng `startSeconds`, SoundCloud/TikTok gọi `seekTo`.
+     * Mọi lượt phát đều bắt đầu từ 0:00: tính năng "nghe tiếp từ chỗ dừng" (tự phát nốt vị trí đã
+     * nghe dở) đã được gỡ bỏ theo yêu cầu, nên không còn đọc `localStorage` để nạp vào giữa bài.
+     * Động cơ vẫn nhận `startAt` (mặc định 0) cho những chỗ gọi khác.
      */
-    const resumeAt =
-      resumeSecondsFor(usePlayerStore.getState().resume, current.id, current.durationSeconds) ?? 0;
-
-    if (resumeAt > 0) {
-      /*
-       * Hiện ngay vị trí sẽ phát trên thanh thời gian và coi như "đang chờ động cơ xác nhận vị trí",
-       * để báo cáo cũ (động cơ báo 0:00 trước khi tua xong) không làm thanh thời gian nhảy về đầu.
-       */
-      usePlayerStore.setState({
-        progress: resumeAt,
-        pendingSeek: resumeAt,
-        pendingSeekAt: Date.now(),
-      });
-
-      // Nói rõ vì sao bài bắt đầu từ giữa bài (kèm nút nghe lại từ đầu cho ai không muốn)
-      toast.info(`Nghe tiếp "${current.title}" từ ${formatDuration(resumeAt)}`, {
-        id: "resume-position",
-        action: {
-          label: "Về đầu bài",
-          onClick: () => usePlayerStore.getState().requestSeekPosition(0),
-        },
-      });
-    }
-
-    void engine.load(current, resumeAt).then(() => {
+    void engine.load(current, 0).then(() => {
       const state = usePlayerStore.getState();
 
       // Nguoi dung da doi sang bai khac trong luc dang nap

@@ -3,13 +3,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-import {
-  forgetResumePosition,
-  rememberResumePosition,
-  RESUME_MIN_SECONDS,
-  sanitizeResumeMap,
-  type ResumeMap,
-} from "@/lib/resume";
 import { clampSeekTarget, isStaleSeekReport, SEEK_PENDING_TIMEOUT_MS } from "@/lib/seek";
 import {
   sleepDeadlineFrom,
@@ -36,11 +29,6 @@ interface PlayerState {
   muted: boolean;
   progress: number;
   duration: number;
-  /**
-   * Vị trí đang nghe của từng bài (tính năng "nghe tiếp từ chỗ dừng").
-   * Được lưu vào localStorage nên mở lại trang vẫn nghe tiếp đúng chỗ.
-   */
-  resume: ResumeMap;
   /** Vi tri dang cho dong co xac nhan sau khi nguoi dung tua (null = khong cho) */
   pendingSeek: number | null;
   /** Thoi diem bat dau cho (ms) - dung de khong bi ket neu dong co khong bao gi */
@@ -81,11 +69,6 @@ interface PlayerState {
   requestSeekPosition: (seconds: number) => void;
   setProgress: (seconds: number, duration?: number) => void;
   setDuration: (seconds: number) => void;
-  /**
-   * Ghi nhớ vị trí đang nghe của một bài (nghe tiếp từ chỗ dừng).
-   * Chưa đủ ngưỡng `RESUME_MIN_SECONDS` hoặc vẫn trong cùng bước 5 giây -> KHÔNG cập nhật state.
-   */
-  rememberPosition: (songId: string, seconds: number) => void;
   setBuffering: (buffering: boolean) => void;
   setVolume: (volume: number) => void;
   toggleMute: () => void;
@@ -196,7 +179,6 @@ type PersistedPlayerState = Pick<
   | "current"
   | "queueLabel"
   | "progress"
-  | "resume"
 >;
 
 export const usePlayerStore = create<PlayerState>()(
@@ -212,7 +194,6 @@ export const usePlayerStore = create<PlayerState>()(
       muted: false,
       progress: 0,
       duration: 0,
-      resume: {},
       pendingSeek: null,
       pendingSeekAt: 0,
       seekRequest: null,
@@ -416,20 +397,12 @@ export const usePlayerStore = create<PlayerState>()(
       requestSeekPosition: (seconds) =>
         set((state) => {
           const target = clampSeekTarget(seconds, state.duration);
-          const songId = state.current?.id;
 
           return {
             progress: target,
             pendingSeek: target,
             pendingSeekAt: Date.now(),
             seekRequest: { seconds: target, token: (state.seekRequest?.token ?? 0) + 1 },
-            /*
-             * Tua về sát đầu bài = người dùng muốn nghe lại từ đầu -> xoá vị trí đã nhớ,
-             * nếu không lần sau mở bài sẽ bị "nghe tiếp" đúng chỗ cũ vừa bị bỏ.
-             */
-            ...(songId && target < RESUME_MIN_SECONDS
-              ? { resume: forgetResumePosition(state.resume, songId) }
-              : {}),
           };
         }),
 
@@ -443,17 +416,6 @@ export const usePlayerStore = create<PlayerState>()(
             : {}),
         })),
       setDuration: (seconds) => set({ duration: Math.max(0, seconds) }),
-
-      /**
-       * Ghi nhớ vị trí đang nghe (gọi từ `ResumeTracker`, không gọi trong lúc render).
-       * `rememberResumePosition` trả về chính bản đồ cũ khi không có gì đổi nên ở đây tránh được
-       * một lần cập nhật state + ghi localStorage vô ích (xem `src/lib/resume.ts`).
-       */
-      rememberPosition: (songId, seconds) =>
-        set((state) => {
-          const resume = rememberResumePosition(state.resume, songId, seconds, Date.now());
-          return resume === state.resume ? {} : { resume };
-        }),
       setBuffering: (buffering) => set({ isBuffering: buffering }),
 
       setVolume: (volume) => set({ volume: clampVolume(volume), muted: false }),
@@ -555,14 +517,14 @@ export const usePlayerStore = create<PlayerState>()(
        */
       storage: createThrottledPersistStorage<PersistedPlayerState>(),
       /**
-       * Dọn bản đồ vị trí đã nghe khi đọc lại từ localStorage (người dùng có thể sửa tay hoặc
-       * dữ liệu từ phiên bản cũ) - bỏ mục sai kiểu thay vì làm hỏng trạng thái trình phát.
+       * Bản cũ có lưu khoá `resume` (vị trí đã nghe dở) trong localStorage; tính năng đó đã bị gỡ
+       * nên bỏ khoá này khi đọc lại để state không mang theo dữ liệu chết.
        */
-      merge: (persisted, current) => ({
-        ...current,
-        ...(persisted as Partial<PlayerState>),
-        resume: sanitizeResumeMap((persisted as Partial<PersistedPlayerState> | undefined)?.resume),
-      }),
+      merge: (persisted, current) => {
+        const rest = { ...(persisted as Partial<PlayerState> & { resume?: unknown }) };
+        delete rest.resume;
+        return { ...current, ...rest };
+      },
       /*
        * Không lưu hẹn giờ tắt nhạc: mở lại trang sau vài tiếng mà vẫn còn đếm ngược cũ thì
        * vô nghĩa (nhạc đã dừng khi đóng tab), lại dễ làm người dùng tưởng trình phát lỗi.
@@ -577,8 +539,6 @@ export const usePlayerStore = create<PlayerState>()(
         current: state.current,
         queueLabel: state.queueLabel,
         progress: state.progress,
-        /* Vị trí đang nghe của từng bài: mở lại trang là nghe tiếp đúng chỗ */
-        resume: state.resume,
       }),
     },
   ),

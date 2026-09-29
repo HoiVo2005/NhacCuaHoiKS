@@ -373,8 +373,14 @@ export class YouTubeEngine implements PlayerEngine {
   }
 
   async play(): Promise<void> {
-    // Da phat roi thi khong gui lai lenh (nhieu effect co the cung goi play)
-    if (this.currentlyPlaying && this.isPlayerUsable()) return;
+    /*
+     * Đã phát rồi thì không gửi lại lệnh (nhiều effect có thể cùng gọi `play`).
+     *
+     * NGOẠI LỆ: sau khi app ra nền, trình duyệt có thể đã tự tạm dừng iframe. Nếu cứ tin vào cờ
+     * `currentlyPlaying` thì lệnh "phát tiếp" lúc quay lại tiền cảnh (xem `player-engine.tsx`) sẽ bị
+     * bỏ qua ngay tại đây -> nhạc vẫn nằm im. Vì vậy phải hỏi thẳng trình phát trước khi bỏ qua.
+     */
+    if (this.currentlyPlaying && this.playerReportsPlaying()) return;
 
     // Cho onReady truoc khi goi: object player chua co method nao truoc onReady
     if (!this.ready || !this.isPlayerUsable()) {
@@ -385,6 +391,26 @@ export class YouTubeEngine implements PlayerEngine {
 
     this.currentlyPlaying = true;
     this.player!.playVideo();
+  }
+
+  /**
+   * Trình phát YouTube đang THẬT SỰ phát?
+   *
+   * Cờ `currentlyPlaying` có thể lệch thực tế: iframe bị trình duyệt treo/tạm dừng khi trang ở nền mà
+   * không bắn `onStateChange`, hoặc sự kiện đó tới muộn.
+   */
+  private playerReportsPlaying(): boolean {
+    const YT = window.YT;
+    const player = this.player;
+
+    if (!YT || !player) return false;
+
+    try {
+      return player.getPlayerState() === YT.PlayerState.PLAYING;
+    } catch {
+      // Không hỏi được trạng thái -> tin vào cờ nội bộ (không gửi lệnh trùng)
+      return this.currentlyPlaying;
+    }
   }
 
   async pause(): Promise<void> {

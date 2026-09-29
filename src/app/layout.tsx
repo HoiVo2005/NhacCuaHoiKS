@@ -10,7 +10,6 @@ import { PlayerBar } from "@/components/player/player-bar";
 import { PlayerEngine } from "@/components/player/player-engine";
 import { PlayerShortcuts } from "@/components/player/player-shortcuts";
 import { QueuePanel } from "@/components/player/queue-panel";
-import { ResumeTracker } from "@/components/player/resume-tracker";
 import { Toaster } from "@/components/ui/toaster";
 import { getSessionUser, hasSessionToken } from "@/lib/auth/guards";
 import { APP_NAME } from "@/lib/constants";
@@ -107,8 +106,6 @@ export default async function RootLayout({
               <PlayerEngine />
               {/* Dieu khien tu khoa man hinh / tai nghe (Media Session API) */}
               <MediaSessionBridge />
-              {/* Ghi nho vi tri dang nghe de lan sau nghe tiep dung cho */}
-              <ResumeTracker />
               <PlayerBar />
               <PlayerShortcuts />
               <QueuePanel />

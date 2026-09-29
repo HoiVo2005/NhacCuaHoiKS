@@ -275,9 +275,9 @@ check(
 );
 
 check(
-  "Dat phien audio TRUOC khi tao do thi am luong va phat file tai len",
-  audioEngineSource.includes("applyBackgroundAudioSession();") &&
-    audioEngineSource.indexOf("applyBackgroundAudioSession();") <
+  "Dat lai phien audio TRUOC khi tao do thi am luong va phat file tai len (trinh duyet co the da xoa)",
+  audioEngineSource.includes("reapplyBackgroundAudioSession();") &&
+    audioEngineSource.indexOf("reapplyBackgroundAudioSession();") <
       audioEngineSource.indexOf("this.ensureGraph();"),
 );
 

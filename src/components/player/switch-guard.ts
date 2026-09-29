@@ -39,10 +39,12 @@ export function releaseSwitchGuard(
   }
 }
 
-/** Su kien pause nay co phai do nguoi dung bam tam dung khong? */
-export function isUserPause(active: RefObject<boolean>): boolean {
-  return !active.current;
-}
+/*
+ * Câu hỏi "sự kiện `pause` này có phải do người dùng bấm tạm dừng không?" nay nằm ở
+ * `src/lib/background-playback.ts` (`isSystemPause`): ngoài việc đang chuyển bài (cờ `active` ở đây),
+ * còn phải xét trang đang ở nền hoặc vừa quay lại tiền cảnh - những trường hợp không thể biết được chỉ
+ * từ một mình cờ này. Xem `npm run check:background`.
+ */
 
 /**
  * Quyet dinh sau khi nap xong bai moi: co tu phat tiep khong?

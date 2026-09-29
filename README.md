@@ -215,19 +215,6 @@ Quy ước áp dụng:
     play/pause (kể cả những lần trình phát tự báo khi chuyển bài hoặc tua) đều gửi thêm một request 0ms.
   - Server bỏ qua lượt ghi khi không có gì mới (cùng vị trí) → bớt một vòng truy vấn CSDL.
   - Kiểm chứng bằng `npm run check:history`.
-- **Nghe tiếp từ chỗ dừng** (phát nốt chỗ đang nghe dở): mỗi bài được nhớ **một** vị trí, lưu trong
-  `localStorage` (khoá `resume` của `src/store/player-store.ts`) nên mở lại trang vẫn nghe tiếp đúng chỗ.
-  - **Chỉ nhớ khi thật cần**: đã nghe **≥ 20 giây** (bấm nhầm/nghe lướt không để lại dấu vết) và vị trí được
-    làm tròn theo **bước 5 giây** — cùng một chỗ trong 5 giây chỉ tạo **một** bản ghi, không ghi
-    `localStorage` liên tục làm giật nhạc (đúng tinh thần `src/lib/throttled-storage.ts`).
-  - **Không “nghe tiếp” vô duyên**: còn **≤ 15 giây** cuối bài (coi như đã nghe xong), vị trí dài hơn thời
-    lượng bài, hoặc dữ liệu trong `localStorage` bị sửa tay → phát lại từ đầu. Tua **về sát đầu bài** cũng
-    xoá vị trí đã nhớ, để lần sau không nhảy vào giữa bài mà bạn vừa cố tình bỏ qua.
-  - Bài bắt đầu từ giữa thì hiện thông báo **nói rõ lý do** (“Nghe tiếp … từ 2:15”) kèm nút **“Về đầu bài”**
-    — không để người dùng tưởng trình phát lỗi.
-  - Mọi nguồn đều nạp được từ vị trí đã lưu: file nội bộ đặt `currentTime`, YouTube truyền `startSeconds`,
-    SoundCloud/TikTok gọi `seekTo`. Luật nằm ở `src/lib/resume.ts` (bộ nhớ tối đa 200 bài) —
-    kiểm chứng bằng `npm run check:resume` (có cả phần chạy trên store thật, không cần CSDL/server).
 - **Điều khiển từ màn hình khoá / tai nghe** (Media Session API): tiêu đề, nghệ sĩ, **ảnh bìa nét nhất**,
   thanh kéo thời gian và các nút Phát/Tạm dừng/Tua ±10s/Bài trước/Bài sau hiện ngay trên **màn hình khoá**,
   thanh thông báo Android và tai nghe Bluetooth — không phải mở lại trình duyệt.
@@ -255,6 +242,21 @@ Quy ước áp dụng:
     dừng, đây là giới hạn chung của web app (không có quyền chạy nền như app native).
   - Luật nằm ở `src/lib/audio-session.ts`, gọi từ `player-engine.tsx` và `audio-engine.ts` — kiểm chứng
     bằng `npm run check:media`.
+
+- **Nghe nhạc khi chuyển sang tab / ứng dụng khác (ra nền)**: khi trang bị ẩn, trình duyệt có thể **tự
+  tạm dừng** phiên phát và **tự đưa loại phiên âm thanh về `"auto"`** — ở trạng thái đó iOS lại coi Web
+  Audio là âm thanh nền nên “đang nghe mà mở app khác là hết nhạc”. Trình phát xử lý cả hai:
+  - **Đặt lại phiên âm thanh** ngay lúc trang bị ẩn, mỗi lần **quay lại tiền cảnh**
+    (`visibilitychange`, `pageshow`) và **trước mỗi lần phát** — trước đây chỉ đặt một lần lúc mở app nên
+    lần ra nền thứ hai là mất tác dụng (`src/lib/audio-session.ts`).
+  - **Sự kiện `pause` khi trang đang ở nền KHÔNG bị coi là “người dùng bấm tạm dừng”**: trình phát giữ
+    nguyên “ý định đang nghe”, rồi khi bạn **quay lại tiền cảnh thì tự phát tiếp** (không phải bấm Phát
+    bằng tay) — kể cả sau khi **cuộc gọi kết thúc** hay ứng dụng khác nhả quyền phát (nghe `statechange`
+    của phiên âm thanh). Với nguồn nhúng, lệnh “phát tiếp” còn phải hỏi thẳng trình phát trước khi bỏ
+    qua, vì `iframe` có thể đã bị tạm dừng khi ở nền mà không báo gì.
+  - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang
+    ngắt quãng (cuộc gọi đang tới, ứng dụng khác đang phát).
+  - Luật nằm ở `src/lib/background-playback.ts` — kiểm chứng bằng `npm run check:background`.
 
 - **Cài ra màn hình chính (PWA) trên iPhone/iPad**: Safari → **Chia sẻ** → **Thêm vào màn hình chính**.
   Những gì app khai báo để chạy như một app thật (xem `src/app/layout.tsx` + `public/manifest.webmanifest`):
@@ -892,8 +894,8 @@ npm run check:insights # Test "Nhip nghe" (ngay/gio dia phuong, chuoi ngay lien 
 npm run check:shortcuts # Test phim tat trinh phat (phim -> hanh dong, bo qua khi dang go/giu Ctrl/mo hop thoai)
 npm run check:lyrics  # Test loi bai hat (doc LRC, dong dang hat, cache CSDL, tra cuu LRCLIB that)
 npm run check:thumbs  # Test anh bia net (nang cap maxresdefault/t500x500, tu ha cap khi anh loi)
-npm run check:resume  # Test "Nghe tiep tu cho dung" (nguong nho, buoc 5 giay, chay tren store that)
 npm run check:media   # Test Media Session (thong tin + anh bia net, nut tren man hinh khoa, thanh thoi gian)
+npm run check:background # Test nghe nhac khi chuyen sang app khac (dat lai phien am thanh, phat tiep khi quay lai)
 npm run check:search  # Test tim kiem khong phan biet hoa/thuong (PostgreSQL) + email dang nhap
 npm run check:mobile  # Test quy tac giao dien dien thoai (chong zoom khi focus o nhap, khong chan pinch-zoom)
 npm run check:youtube # Test dong co YouTube (khong can server, khong can trinh duyet)
@@ -968,6 +970,10 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
   `listRecentlyPlayedSongs()` quét một khoảng lịch sử gần đây rồi lọc trùng theo bài
   (`pickUniqueRecentSongs`) — mỗi bài xuất hiện một lần, theo thứ tự nghe mới nhất.
   Trang `/music/history` thì vẫn liệt kê **từng lượt nghe** kèm thời gian (đúng bản chất nhật ký).
+- **Không còn “nghe tiếp từ chỗ dừng”**: mỗi bài **luôn phát từ đầu**. Trước đây trình phát tự nạp lại vị trí
+  đã nghe dở (nhớ trong khoá `resume` của `localStorage`) kèm thông báo “Nghe tiếp … từ 2:15”; tính năng này
+  **đã bị gỡ** theo yêu cầu. Bản cũ để lại khoá `resume` trong `localStorage` — `merge` của
+  `src/store/player-store.ts` bỏ nó khi đọc lại nên state không mang theo dữ liệu chết.
 - **Đếm bài nổi bật trên banner**: “Mới thêm vào thư viện” và “Nghe nhiều nhất” là hai truy vấn độc lập
   nên một bài có thể xuất hiện ở cả hai; `countUniqueSongs()` (ở `src/lib/music/collections.ts`) gộp
   theo `id` trước khi hiển thị, tránh con số bị đếm trùng. Kiểm chứng bằng `npm run check:recent`.

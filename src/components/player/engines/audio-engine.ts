@@ -1,5 +1,5 @@
 import type { SongDTO } from "@/types";
-import { applyBackgroundAudioSession } from "@/lib/audio-session";
+import { reapplyBackgroundAudioSession } from "@/lib/audio-session";
 import { clampSeekTarget } from "@/lib/seek";
 import { EMBED_MAX_VOLUME, MAX_VOLUME } from "@/lib/volume";
 
@@ -174,8 +174,12 @@ export class AudioEngine implements PlayerEngine {
     /*
      * Khai báo audio "nghe nhạc" TRƯỚC khi phát (iOS): nhờ vậy khi app bị đưa ra nền/khoá màn hình,
      * iOS không treo âm thanh của trang nữa (xem `src/lib/audio-session.ts`).
+     *
+     * Đặt LẠI mỗi lần phát (không dùng bản "nhớ một lần"): trình duyệt có thể tự đưa phiên về `"auto"`
+     * khi trang bị ẩn, nên nếu chỉ đặt một lần ở lúc mở app thì lần phát sau khi quay lại tiền cảnh sẽ
+     * bị coi là âm thanh nền - đúng lỗi "chuyển sang ứng dụng khác là hết nhạc".
      */
-    applyBackgroundAudioSession();
+    reapplyBackgroundAudioSession();
 
     // Do thi khuech dai (neu can) phai tao trong hanh dong nguoi dung de duoc phep phat
     this.ensureGraph();
