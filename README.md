@@ -247,7 +247,8 @@ Quy ước áp dụng:
   Safari 16.4+) ngay khi mở app và trước mỗi lần phát, nhờ vậy iOS coi đây là **audio nghe nhạc**:
   - Phát tiếp khi app ra nền / khoá màn hình: thẻ `<audio>` (file tải lên) cần **iOS 15.4+**; khi âm lượng
     **dưới 100%**, app dùng Web Audio để giảm âm lượng nên cần **iOS 17.5+** (WebKit bug 261554). Với iOS cũ
-    hơn, mẹo: bấm **“Tối đa”** để về đúng 100% (không còn dùng Web Audio) là nghe nền được.
+    hơn, mẹo: **kéo thanh âm lượng về đúng vạch 100%** (vạch mốc ở giữa thanh trượt) — lúc đó không còn dùng
+    Web Audio nữa nên nghe nền được; đừng bấm **“Tối đa”** vì nút đó đặt **200%** (vẫn dùng Web Audio).
   - **Không bị công tắc chuông (im lặng) tắt tiếng** nữa; bài/nghệ sĩ và nút điều khiển vẫn hiện trên màn hình khoá.
   - **Nguồn nhúng (YouTube/SoundCloud/TikTok) KHÔNG nghe được ở nền**: âm thanh nằm trong `iframe` và iOS
     treo `iframe` khi app ra nền — chỉ **file tải lên** mới nghe nền được. Vuốt app lên để tắt hẳn thì nhạc
