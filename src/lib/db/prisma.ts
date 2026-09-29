@@ -11,7 +11,7 @@ function createPrismaClient(): PrismaClient {
 
   if (!databaseUrl) {
     throw new Error(
-      "Thieu bien moi truong DATABASE_URL. Xem file .env.example de biet dinh dang ket noi PostgreSQL (Neon).",
+      "Thieu bien moi truong DATABASE_URL. Chay `npm run env:write` de tao .env, hoac xem muc \"Cau hinh .env\" trong README.md (chuoi pooled cua Neon).",
     );
   }
 

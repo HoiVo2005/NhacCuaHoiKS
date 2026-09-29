@@ -23,7 +23,7 @@ const startScript = read("scripts/docker-start.cjs");
 const unlockScript = read("scripts/unlock-migrations.cjs");
 const prismaConfig = read("prisma.config.ts");
 const renderYaml = read("render.yaml");
-const envExample = read(".env.example");
+const writeEnvScript = read("scripts/write-env.cjs");
 const readme = read("README.md");
 
 check(
@@ -85,8 +85,11 @@ check(
 );
 
 check(
-  "Tai lieu (.env.example + README) noi ro DIRECT_URL va loi P1002",
-  envExample.includes("DIRECT_URL") && readme.includes("DIRECT_URL") && readme.includes("P1002"),
+  "Tai lieu (README + `npm run env:write`) noi ro DIRECT_URL va loi P1002",
+  writeEnvScript.includes("DIRECT_URL") &&
+    writeEnvScript.includes("DATABASE_URL") &&
+    readme.includes("DIRECT_URL") &&
+    readme.includes("P1002"),
 );
 
 check(

@@ -552,9 +552,8 @@ không lấy được nhạc). Bạn có thể kiểm tra nhanh một link cụ 
 # 1) Cai dependencies
 npm install
 
-# 2) Tao file .env tu mau va chinh sua
-copy .env.example .env      # Windows
-# cp .env.example .env      # macOS / Linux
+# 2) Tao file .env (tu sinh AUTH_SECRET + khung bien moi truong)
+npm run env:write           # roi dan chuoi ket noi Neon vao DATABASE_URL / DIRECT_URL trong .env
 
 # 3) Sinh Prisma Client + tao bang + nap du lieu mau
 npm run db:generate
@@ -572,7 +571,7 @@ npm run dev                 # http://localhost:3000
 ```ini
 # --- Database: PostgreSQL (Neon / Render Postgres) ---
 # Lay chuoi ket noi o Neon: Project -> Connection string -> chon "Pooled connection" (co "-pooler").
-# KHONG dat mat khau that vao README / .env.example vi day la file trong repo cong khai.
+# KHONG dat mat khau that vao README / scripts/write-env.cjs vi day la file trong repo cong khai.
 DATABASE_URL="postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
 
 # --- Auth.js (NextAuth v5) ---
@@ -615,7 +614,7 @@ npm run db:seed      # du lieu mau (tuy chon)
 npm run db:check     # kiem tra ket noi + liet ke bang + dem user
 ```
 
-> **Bảo mật:** repo này là công khai nên mọi mật khẩu trong README/`.env.example`/`docker-compose.yml`
+> **Bảo mật:** repo này là công khai nên mọi mật khẩu trong README/`scripts/write-env.cjs`/`docker-compose.yml`
 > đều chỉ là **giá trị mẫu**. Mật khẩu thật chỉ nằm trong `.env` (đã bị `.gitignore` chặn) hoặc trong
 > biến môi trường khi triển khai. Lưu ý `npm run env:write` **giữ nguyên `DATABASE_URL` đang có** trong
 > `.env`; muốn đổi CSDL thì truyền `NEW_DATABASE_URL` hoặc sửa tay file `.env`.
@@ -936,7 +935,7 @@ Kiểm tra nhanh bằng tay sau khi chạy dev (`npm run dev`):
 
 | Hiện tượng                                                           | Nguyên nhân thường gặp                                                                  | Cách xử lý                                                                                                                                              |
 | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Thiếu biến môi trường DATABASE_URL`                                 | Chưa tạo `.env`                                                                         | Sao chép `.env.example` → `.env` rồi dán chuỗi kết nối Neon                                                                                             |
+| `Thiếu biến môi trường DATABASE_URL`                                 | Chưa tạo `.env`                                                                         | Chạy `npm run env:write` rồi dán chuỗi kết nối Neon vào `DATABASE_URL`                                                                                   |
 | `ECONNREFUSED` / timeout khi kết nối CSDL                            | Sai host/port, mạng chặn 5432, hoặc Neon đang "ngủ"                                     | Kiểm tra chuỗi kết nối (phải có `-pooler` và `sslmode=require`), rồi chạy `npm run db:check`                                                            |
 | `password authentication failed`                                     | Sai mật khẩu trong `DATABASE_URL`                                                       | Neon → _Reset password_ → dán lại chuỗi mới vào `.env` (lưu ý `npm run env:write` giữ nguyên `DATABASE_URL` cũ)                                         |
 | `SSL required` / `no pg_hba.conf entry`                              | Thiếu `?sslmode=require`                                                                | Thêm `?sslmode=require` vào cuối `DATABASE_URL`                                                                                                         |

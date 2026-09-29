@@ -83,7 +83,7 @@ check(
 async function runDatabaseCheck(): Promise<void> {
   const url = process.env.DATABASE_URL ?? "";
   if (!url.startsWith("postgres")) {
-    skip("Kiem tra tren CSDL that", "DATABASE_URL khong phai PostgreSQL (xem .env.example)");
+    skip("Kiem tra tren CSDL that", "DATABASE_URL khong phai PostgreSQL (xem muc \"Cau hinh .env\" trong README.md)");
     return;
   }
 

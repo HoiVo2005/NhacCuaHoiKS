@@ -25,7 +25,7 @@ yarn-error.log*
 # env files
 .env
 .env*.local
-!.env.example
+# Khong con file mau `.env.example`: khung bien moi truong sinh bang `npm run env:write` (xem README muc 4).
 
 # typescript
 *.tsbuildinfo

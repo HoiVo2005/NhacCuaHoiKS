@@ -2,7 +2,7 @@
 /**
  * Sinh file .env chuan cho moi truong phat trien: node scripts/write-env.cjs
  * Cho phep truyen gia tri qua bien moi truong:
- *   NEW_DATABASE_URL, NEW_AUTH_SECRET
+ *   NEW_DATABASE_URL, NEW_DIRECT_URL, NEW_AUTH_SECRET
  *
  * LUU Y: file nay KHONG chua mat khau that (repo la cong khai). Khi khong duoc truyen
  * NEW_DATABASE_URL, script se GIU LAI DATABASE_URL dang co trong .env (neu co) - nho vay chay
@@ -15,10 +15,17 @@ const path = require("path");
 /** Duong dan file .env o goc du an */
 const target = path.join(__dirname, "..", ".env");
 
-/** Doc DATABASE_URL hien co trong .env (null neu chua co file / chua khai bao) */
-function existingDatabaseUrl(file) {
+/**
+ * Doc mot bien dang co trong .env.
+ *
+ * Tra ve null neu chua co file / chua khai bao - nho vay chay lai `npm run env:write` khong lam mat
+ * gia tri nguoi dung da dat (DATABASE_URL, DIRECT_URL...).
+ */
+function existingValue(file, name) {
   try {
-    const match = fs.readFileSync(file, "utf8").match(/^\s*DATABASE_URL\s*=\s*"(.*)"\s*$/m);
+    const match = fs
+      .readFileSync(file, "utf8")
+      .match(new RegExp(`^\\s*${name}\\s*=\\s*"(.*)"\\s*$`, "m"));
     return match ? match[1] : null;
   } catch {
     return null;
@@ -33,8 +40,15 @@ function existingDatabaseUrl(file) {
  */
 const databaseUrl =
   process.env.NEW_DATABASE_URL ||
-  existingDatabaseUrl(target) ||
+  existingValue(target, "DATABASE_URL") ||
   "postgresql://USER:PASSWORD@ep-xxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require";
+
+/*
+ * Chuoi TRUC TIEP (bo "-pooler" khoi host) cho moi lenh `prisma migrate`/`prisma studio`.
+ * Bat buoc co khi dung Neon/PgBouncer: migrate qua chuoi pooled se treo `pg_advisory_lock` -> loi P1002.
+ * De trong thi Dockerfile + render.yaml tu bo "-pooler" khoi DATABASE_URL (van chay, chi kem tuong minh).
+ */
+const directUrl = process.env.NEW_DIRECT_URL || existingValue(target, "DIRECT_URL") || "";
 
 
 const authSecret = process.env.NEW_AUTH_SECRET || crypto.randomBytes(32).toString("hex");
@@ -45,8 +59,11 @@ const lines = [
   "# Sinh tu dong bang: node scripts/write-env.cjs",
   "# =============================================================================",
   "",
-  "# --- Database: Microsoft SQL Server (Prisma) ---",
+  "# --- Database: PostgreSQL (Neon / Render Postgres) ---",
   `DATABASE_URL="${databaseUrl}"`,
+  "",
+  "# Chuoi TRUC TIEP (bo '-pooler' khoi host) cho `prisma migrate` - tranh loi P1002 (advisory lock).",
+  `DIRECT_URL="${directUrl}"`,
   "",
   "# --- Auth.js (NextAuth v5) ---",
   `AUTH_SECRET="${authSecret}"`,

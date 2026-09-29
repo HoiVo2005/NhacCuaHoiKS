@@ -65,7 +65,7 @@ async function main() {
   const databaseUrl = process.env.DATABASE_URL ?? "";
   if (!databaseUrl.startsWith("postgres")) {
     console.error(
-      "DATABASE_URL khong phai chuoi PostgreSQL. Xem .env.example (chuoi pooled cua Neon).",
+      "DATABASE_URL khong phai chuoi PostgreSQL. Chay `npm run env:write` hoac xem muc \"Cau hinh .env\" trong README.md.",
     );
     process.exitCode = 1;
     return;
