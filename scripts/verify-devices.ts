@@ -156,6 +156,9 @@ const meRoute = read("src/app/api/me/devices/route.ts");
 const adminRoute = read("src/app/api/employees/[id]/devices/route.ts");
 const statusRoute = read("src/app/api/device-status/route.ts");
 const readme = read("README.md");
+const layout = read("src/app/layout.tsx");
+const watchdog = read("src/components/auth/session-watchdog.tsx");
+const expiredRoute = read("src/app/api/session/expired/route.ts");
 
 check(
   "CSDL: bang `user_devices` co IP, vi tri, ten may, dang xuat tu xa va chan dang nhap",
@@ -198,6 +201,34 @@ check(
     guards.includes("touchDevice(context.deviceId") &&
     guards.includes("const user = await getActiveSessionUser();") &&
     guards.includes("getCurrentDeviceId"),
+);
+
+check(
+  "May KHAC cung het phien: giao dien doi chieu CSDL (khong chi giai ma JWT)",
+  guards.includes("const loadSessionRecord = cache(") &&
+    guards.includes("getDeviceState(context.deviceId, context.user.id)") &&
+    guards.includes("hasSessionToken"),
+);
+
+check(
+  "Phien het hieu luc nhung JWT con han: don cookie that roi moi ve /login (khong ket vong lap proxy)",
+  guards.includes("SESSION_EXPIRED_PATH") &&
+    proxySource.includes('pathname === "/api/session/expired"') &&
+    expiredRoute.includes("SESSION_COOKIE_PATTERN") &&
+    expiredRoute.includes("NextResponse.redirect"),
+);
+
+check(
+  "Tab dang mo tren may khac tu phat hien phien bi thu hoi (401) va dang xuat",
+  watchdog.includes('fetch("/api/me"') &&
+    watchdog.includes("signOut(") &&
+    watchdog.includes("CHECK_INTERVAL_MS") &&
+    layout.includes("<SessionWatchdog"),
+);
+
+check(
+  "README: giai thich vi sao may khac phai tu dang xuat (khong xoa duoc cookie tu xa)",
+  readme.includes("/api/session/expired") && readme.includes("SessionWatchdog"),
 );
 
 check(

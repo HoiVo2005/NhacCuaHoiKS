@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 
 import { SessionProvider } from "@/components/auth/session-context";
+import { SessionWatchdog } from "@/components/auth/session-watchdog";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ConfirmProvider } from "@/components/ui/confirm-dialog";
 import { FullPlayer } from "@/components/player/full-player";
@@ -11,7 +12,7 @@ import { PlayerShortcuts } from "@/components/player/player-shortcuts";
 import { QueuePanel } from "@/components/player/queue-panel";
 import { ResumeTracker } from "@/components/player/resume-tracker";
 import { Toaster } from "@/components/ui/toaster";
-import { getSessionUser } from "@/lib/auth/guards";
+import { getSessionUser, hasSessionToken } from "@/lib/auth/guards";
 import { APP_NAME } from "@/lib/constants";
 
 import "./globals.css";
@@ -57,8 +58,14 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Khach (chua dang nhap) van xem/nghe nhac duoc; session chi dung de hien thi dung giao dien
-  const user = await getSessionUser();
+  /*
+   * Khach (chua dang nhap) van xem/nghe nhac duoc; session chi dung de hien thi dung giao dien.
+   *
+   * `getSessionUser()` da doi chieu CSDL nen may bi “dang xuat tu xa”/“bi chan” se thay giao dien nhu
+   * khach ngay (khong con avatar/ten nhu dang dang nhap). `sessionPresent` cho biet cookie phien con ton
+   * tai, de `SessionWatchdog` don khi phien da het hieu luc.
+   */
+  const [user, sessionPresent] = await Promise.all([getSessionUser(), hasSessionToken()]);
 
   return (
     <html lang="vi" suppressHydrationWarning>
@@ -71,6 +78,9 @@ export default async function RootLayout({
       <body className="min-h-screen antialiased" suppressHydrationWarning>
         <ThemeProvider>
           <SessionProvider user={user}>
+            {/* Phien da het hieu luc / bi thu hoi tu xa thi dang xuat ngay tren may nay */}
+            <SessionWatchdog authenticated={Boolean(user)} sessionPresent={sessionPresent} />
+
             <ConfirmProvider>
               {children}
 

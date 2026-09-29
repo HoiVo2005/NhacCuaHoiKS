@@ -31,6 +31,13 @@ function isPublicApi(pathname: string, method: string): boolean {
   if (pathname === "/api/device-status") return true;
 
   /*
+   * Don cookie phien da het hieu luc roi moi ve /login: phai mo cho ca nguoi con JWT (phien da bi thiet
+   * bi thu hoi / bi chan) de ho khong bi ket trong vong lap /login <-> /music.
+   * Xem `src/app/api/session/expired/route.ts`.
+   */
+  if (pathname === "/api/session/expired") return true;
+
+  /*
    * File nhac/anh trong storage noi bo: khach cung phai doc duoc.
    * HEAD duoc cho phep nhu GET (cung la method an toan, khong doi du lieu): mot so trinh duyet/CDN
    * dung HEAD de do kich thuoc/loai file truoc khi phat -> chan HEAD se lam nhac khong tai duoc.

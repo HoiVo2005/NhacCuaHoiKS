@@ -423,6 +423,23 @@ phiên** (trang chuyển về `/login`, API trả **401**). Vị trí tra qua `i
 lý do** kèm tên máy, thay vì đổ lỗi cho mật khẩu. Kiểm chứng bằng `npm run check:devices` (có cả vòng đời
 thật trên CSDL: tạo → chặn → mở chặn → đăng xuất, rồi tự xoá sạch dữ liệu thử).
 
+**Máy đã bị “Đăng xuất”/“Chặn đăng nhập” từ xa không thể tiếp tục “y nguyên”**: máy chủ không xoá được cookie
+phiên nằm trên máy của người khác, nên việc thu hồi được ba mảnh ghép dưới đây thực thi:
+
+1. `getSessionUser()` (dùng cho layout/giao diện, `src/lib/auth/guards.ts`) cũng **đối chiếu CSDL** như
+   `getActiveSessionUser()` → máy bị thu hồi thấy giao diện như khách (không còn avatar/tên), API trả **401**.
+2. `/api/session/expired` (`src/app/api/session/expired/route.ts`) là chỗ **xoá cookie phiên thật** rồi mới về
+   `/login`. `requireUserPage()` chuyển hướng về đây khi phiên hết hiệu lực mà JWT vẫn còn hạn — nếu
+   `redirect("/login")` thẳng thì `proxy.ts` lại đá về `/music` (ADMIN: `/admin`) và thành **vòng lặp**, người
+   dùng không bao giờ tới được trang đăng nhập.
+3. `SessionWatchdog` (`src/components/auth/session-watchdog.tsx`, gắn trong layout gốc) hỏi `GET /api/me` khi
+   mở tab, khi quay lại tab và mỗi phút: gặp **401** thì báo lý do rồi tự `signOut()` — tab đang mở sẵn trên
+   máy kia bị đăng xuất mà không cần tải lại trang.
+
+> Nút **Đăng xuất** trong menu tài khoản chỉ xoá phiên **trên máy đang dùng** (phiên đó hết hiệu lực ngay,
+> nhưng dòng thiết bị vẫn được giữ lại để xem “hoạt động gần nhất”). Muốn cắt phiên của **máy khác** thì dùng
+> **Hồ sơ cá nhân → Thiết bị đang đăng nhập** (quản trị viên: `/admin/employees` → nút *Thiết bị đang đăng nhập*).
+
 > Nâng cấp: phiên tạo **trước** khi có tính năng này không kèm thông tin thiết bị nên sẽ phải **đăng nhập
 > lại một lần** để được quản lý.
 
@@ -965,8 +982,9 @@ luôn ấm:
 
 - **Yêu thích dùng chung một truy vấn/request**: `getFavoriteIdSet()` được cache bằng React `cache()` —
   trước đây mỗi danh sách (nhạc mới, nghe nhiều, nghe tiếp…) tự truy vấn favorites riêng.
-- **Session giải mã một lần/request**: `getSessionUser()` bọc `cache()` vì layout gốc + layout khu + trang
-  đều gọi hàm này.
+- **Session giải mã một lần/request**: `getSessionUser()` / `getActiveSessionUser()` bọc `cache()` (layout gốc
+  + layout khu + trang + API đều đi qua `loadSessionRecord`) nên việc đối chiếu CSDL của phiên chỉ tốn **1
+  truy vấn tài khoản + 1 truy vấn thiết bị cho mỗi request**; khách (chưa đăng nhập) không tốn truy vấn nào.
 - **Dashboard quản trị**: gộp truy vấn “top người nghe” vào `Promise.all` và tính tổng bằng `groupBy`
   (`_sum.msPlayed`) ngay trên CSDL thay vì kéo toàn bộ lịch sử của người dùng về Node.
 - **Pool kết nối**: `max: 5` + `idleTimeoutMillis: 30s` trong `src/lib/db/prisma.ts` → giữ kết nối ấm mà
