@@ -99,6 +99,62 @@ check(
   mobileHook.includes("getServerSnapshot") && mobileHook.includes("useSyncExternalStore"),
 );
 
+/* ------------------ 4. Cai len man hinh chinh (PWA) tren iOS ------------------ */
+
+const manifestSource = source("public/manifest.webmanifest");
+const readmeSource = source("README.md");
+
+/**
+ * Doc kich thuoc tu header file PNG: 8 byte chu ky, roi den chunk IHDR voi chieu rong/cao la hai so
+ * uint32 big-endian o offset 16 va 20. Nho vay kiem chung duoc ICON THAT SU dung kich thuoc iOS can,
+ * khong chi tin vao ten file.
+ */
+function pngSize(relativePath: string): { width: number; height: number } | null {
+  const buffer = readFileSync(path.join(root, ...relativePath.split("/")));
+  if (buffer.length < 24 || buffer.readUInt32BE(0) !== 0x89504e47) return null;
+
+  return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+}
+
+const appleTouchIcon = pngSize("public/apple-touch-icon.png");
+const icon192 = pngSize("public/icon-192.png");
+const icon512 = pngSize("public/icon-512.png");
+
+check(
+  "iOS: co `apple-touch-icon` dang PNG 180x180 (iOS KHONG ho tro SVG -> thieu la icon trong)",
+  appleTouchIcon?.width === 180 && appleTouchIcon?.height === 180,
+  appleTouchIcon ? `${appleTouchIcon.width}x${appleTouchIcon.height}` : "khong doc duoc file",
+);
+check(
+  "Chrome/Android: icon PNG 192x192 + 512x512 va manifest tro dung file",
+  icon192?.width === 192 &&
+    icon192?.height === 192 &&
+    icon512?.width === 512 &&
+    icon512?.height === 512 &&
+    manifestSource.includes('"src": "/icon-192.png"') &&
+    manifestSource.includes('"src": "/icon-512.png"'),
+);
+check(
+  "Manifest: chay o che do standalone, van giu ban icon SVG cho trinh duyet ho tro",
+  manifestSource.includes('"display": "standalone"') && manifestSource.includes("/logo.svg"),
+);
+check(
+  "iOS: khai bao che do standalone (appleWebApp.capable) + ten ngan duoi icon",
+  layoutCode.includes("appleWebApp") &&
+    layoutCode.includes("capable: true") &&
+    layoutCode.includes("title: APP_NAME"),
+);
+check(
+  "Layout tro dung icon PNG cua iOS (truoc day tro vao SVG nen bi bo qua)",
+  layoutCode.includes('url: "/apple-touch-icon.png"') &&
+    !layoutCode.includes('apple: [{ url: "/logo.svg"'),
+);
+check(
+  "Icon PNG sinh tu logo bang script (khong sua tay tung file) va duoc ghi trong README",
+  source("scripts/generate-pwa-icons.ts").includes("apple-touch-icon.png") &&
+    readmeSource.includes("icons:pwa"),
+);
+
 /* --------------------------------- Ket qua --------------------------------- */
 
 const failed = results.filter((line) => line.startsWith("FAIL"));

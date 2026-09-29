@@ -25,10 +25,29 @@ export const metadata: Metadata = {
   description:
     "NhacCuaHoiKS - hệ thống nghe nhạc nội bộ dành cho doanh nghiệp: thư viện nhạc tập trung, playlist, yêu thích và lịch sử nghe.",
   applicationName: APP_NAME,
+  /*
+   * Web app khi "Them vao man hinh chinh" tren iOS/iPadOS:
+   *  - `capable` -> the <meta name="apple-mobile-web-app-capable"> : chay o che do standalone
+   *    (khong con thanh dia chi cua Safari) - dung voi `display: standalone` trong manifest.
+   *  - `title`   -> ten ngan duoi icon (mac dinh lay <title> rat dai nen bi cat cut).
+   * KHONG dat `statusBarStyle` trong suot: giao dien dang tinh san khoang an toan (env(safe-area-inset-*)
+   * trong globals.css) theo thanh trang thai mac dinh, doi sang "black-translucent" se de chu bi che.
+   */
+  appleWebApp: {
+    capable: true,
+    title: APP_NAME,
+  },
   icons: {
-    icon: [{ url: "/logo.svg", type: "image/svg+xml" }],
+    /*
+     * iOS chi ho tro `apple-touch-icon` dang PNG (SVG bi bo qua -> icon trong/manh) nen phai co ban PNG
+     * 180x180 trong `public/`; Chrome/Android uu tien PNG 192 + 512. Sinh lai bang `npm run icons:pwa`.
+     */
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/logo.svg", type: "image/svg+xml" },
+    ],
     shortcut: ["/logo.svg"],
-    apple: [{ url: "/logo.svg" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   manifest: "/manifest.webmanifest",
 };

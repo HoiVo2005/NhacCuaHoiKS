@@ -256,6 +256,20 @@ Quy ước áp dụng:
   - Luật nằm ở `src/lib/audio-session.ts`, gọi từ `player-engine.tsx` và `audio-engine.ts` — kiểm chứng
     bằng `npm run check:media`.
 
+- **Cài ra màn hình chính (PWA) trên iPhone/iPad**: Safari → **Chia sẻ** → **Thêm vào màn hình chính**.
+  Những gì app khai báo để chạy như một app thật (xem `src/app/layout.tsx` + `public/manifest.webmanifest`):
+  - `display: standalone` trong manifest **và** `apple-mobile-web-app-capable` → mở ra là toàn màn hình,
+    không còn thanh địa chỉ của Safari; `apple-mobile-web-app-title` đặt tên ngắn gọn dưới icon.
+  - Icon **PNG** cho iOS (`/apple-touch-icon.png` 180×180) và cho Android/Chrome (`/icon-192.png`,
+    `/icon-512.png`) — **iOS không hỗ trợ `apple-touch-icon` dạng SVG**, thiếu PNG là icon bị trống.
+    Các file này sinh từ `public/logo.svg` bằng `npm run icons:pwa` (cần `sharp`, có sẵn theo Next.js),
+    đã commit trong `public/` nên máy chủ chỉ việc phục vụ file tĩnh.
+  - Giao diện tự chừa **khoảng an toàn** `env(safe-area-inset-*)` (tai thỏ / thanh home) nên ở chế độ
+    standalone không bị thanh trên/dưới che mất nút.
+  - Kiểm chứng bằng `npm run check:mobile` (đọc thẳng kích thước trong header file PNG).
+  - Sau khi nâng cấp bản mới: **xoá icon cũ rồi “Thêm vào màn hình chính” lại** — iOS chốt icon và các thẻ
+    meta ngay ở lần cài đầu nên icon cũ không tự cập nhật.
+
 - **Trình bày trên điện thoại** (hai chỗ trước đây khó dùng, đã sửa):
   - **Hẹn giờ tắt nhạc**: dưới 640px, menu nhỏ được thay bằng **panel rộng nổi phía trên thanh phát** —
     dùng **cùng bộ class** với panel “Danh sách phát” nên nhìn và bấm giống hệt nhau; đóng bằng nút `X`,

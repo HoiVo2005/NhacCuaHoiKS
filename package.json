@@ -25,6 +25,7 @@
     "db:setup": "prisma generate && prisma migrate deploy && npm run db:seed",
     "env:write": "node scripts/write-env.cjs",
     "app:name": "node scripts/set-app-name.cjs",
+    "icons:pwa": "tsx scripts/generate-pwa-icons.ts",
     "smoke": "node scripts/smoke-test.cjs",
     "smoke:serve": "powershell -ExecutionPolicy Bypass -File scripts/smoke-serve.ps1",
     "bench": "node scripts/bench.cjs",
