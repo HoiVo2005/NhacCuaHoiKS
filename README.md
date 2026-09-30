@@ -232,10 +232,10 @@ Quy ước áp dụng:
   (`AudioContext`) là âm thanh **“ambient”** nên **chặn ngay khi app không còn ở tiền cảnh** — đang nghe mà
   thoát ra là nhạc dừng. Trình phát đặt `navigator.audioSession.type = "playback"` (Audio Session API,
   Safari 16.4+) ngay khi mở app và trước mỗi lần phát, nhờ vậy iOS coi đây là **audio nghe nhạc**:
-  - Phát tiếp khi app ra nền / khoá màn hình: thẻ `<audio>` (file tải lên) cần **iOS 15.4+**; khi âm lượng
-    **dưới 100%**, app dùng Web Audio để giảm âm lượng nên cần **iOS 17.5+** (WebKit bug 261554). Với iOS cũ
-    hơn, mẹo: **kéo thanh âm lượng về đúng vạch 100%** (vạch mốc ở giữa thanh trượt) — lúc đó không còn dùng
-    Web Audio nữa nên nghe nền được; đừng bấm **“Tối đa”** vì nút đó đặt **200%** (vẫn dùng Web Audio).
+  - Phát tiếp khi app ra nền / khoá màn hình: thẻ `<audio>` (file tải lên) cần **iOS 15.4+**.
+  - **Âm lượng ≤ 100% luôn dùng chính thẻ `<audio>` (không Web Audio)** nên không còn phải “kéo thanh âm
+    lượng về đúng vạch 100%” mới nghe được ở nền; chỉ mức **trên 100%** (khuếch đại) mới dùng Web Audio và
+    khi đó việc nghe nền cần **iOS 17.5+** (WebKit bug 261554) — xem mục “chuyển sang tab / ứng dụng khác”.
   - **Không bị công tắc chuông (im lặng) tắt tiếng** nữa; bài/nghệ sĩ và nút điều khiển vẫn hiện trên màn hình khoá.
   - **Nguồn nhúng (YouTube/SoundCloud/TikTok) KHÔNG nghe được ở nền**: âm thanh nằm trong `iframe` và iOS
     treo `iframe` khi app ra nền — chỉ **file tải lên** mới nghe nền được. Vuốt app lên để tắt hẳn thì nhạc
@@ -244,8 +244,22 @@ Quy ước áp dụng:
     bằng `npm run check:media`.
 
 - **Nghe nhạc khi chuyển sang tab / ứng dụng khác (ra nền)**: khi trang bị ẩn, trình duyệt có thể **tự
-  tạm dừng** phiên phát và **tự đưa loại phiên âm thanh về `"auto"`** — ở trạng thái đó iOS lại coi Web
-  Audio là âm thanh nền nên “đang nghe mà mở app khác là hết nhạc”. Trình phát xử lý cả hai:
+  tạm dừng** phiên phát, **tự đưa loại phiên âm thanh về `"auto"`** và **treo bộ xử lý âm thanh Web Audio**
+  — ở trạng thái đó iOS lại coi Web Audio là âm thanh **ambient** nên “đang nghe mà mở app khác là hết
+  nhạc”. Trình phát xử lý như sau:
+  - **Mức ≤ 100% KHÔNG dùng Web Audio** (`needsWebAudioGraph`, `src/lib/volume.ts`): trước đây hễ thấy
+    trình duyệt bỏ qua `audio.volume` (iOS/Android luôn vậy — mức mặc định là 80%) là app **tự tạo đồ thị
+    Web Audio** để giảm âm lượng, kéo theo đúng lỗi này (WebKit bug 198277: Web Audio là “ambient”; iOS <
+    17.5 không đánh thức lại được — bug 261554; `resume()` có thể **treo vĩnh viễn** — bug 281566). Nay
+    **chỉ trên 100%** (nút “Tối đa”) mới dùng Web Audio; mức ≤ 100% luôn dùng chính thẻ `<audio>` (nghe
+    nền tốt từ iOS 15.4). Đổi lại: trên **iPhone/iPad**, trình duyệt **không cho ứng dụng đổi âm lượng**
+    dưới 100% — app báo rõ một lần và bạn dùng **nút âm lượng của máy**.
+  - **Đồ thị Web Audio (chỉ khi khuếch đại > 100%) tự đánh thức lại**: `watchGraphResume` theo dõi
+    `statechange`; đang phát mà bộ xử lý bị treo thì `suspend()` rồi `resume()` sau 200 ms — đúng mẹo
+    trong WebKit bug 281566.
+  - **Thẻ `<audio>` luôn nằm TRONG cây hiển thị** (1×1 px, trong suốt) chứ **không** đặt `display: none`:
+    Chromium coi `display: none` là “không được vẽ” trong chính sách `media-playback-while-not-visible`
+    (nhánh Web Audio của chính sách này chuyển `AudioContext` sang trạng thái `interrupted`).
   - **Đặt lại phiên âm thanh** ngay lúc trang bị ẩn, mỗi lần **quay lại tiền cảnh**
     (`visibilitychange`, `pageshow`) và **trước mỗi lần phát** — trước đây chỉ đặt một lần lúc mở app nên
     lần ra nền thứ hai là mất tác dụng (`src/lib/audio-session.ts`).
@@ -254,6 +268,9 @@ Quy ước áp dụng:
     bằng tay) — kể cả sau khi **cuộc gọi kết thúc** hay ứng dụng khác nhả quyền phát (nghe `statechange`
     của phiên âm thanh). Với nguồn nhúng, lệnh “phát tiếp” còn phải hỏi thẳng trình phát trước khi bỏ
     qua, vì `iframe` có thể đã bị tạm dừng khi ở nền mà không báo gì.
+  - **Quay lại tiền cảnh là tự phát tiếp — và thử lại lần hai nếu cần**: nếu sau 1,2 giây động cơ vẫn báo
+    **chưa phát** (`PlayerEngine.reportsPlaying` + `shouldRetryResumePlayback`) thì app gọi phát lại lần
+    nữa, vì lệnh phát đầu tiên rất dễ bị bỏ qua ngay khi app vừa được đánh thức.
   - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang
     ngắt quãng (cuộc gọi đang tới, ứng dụng khác đang phát).
   - Luật nằm ở `src/lib/background-playback.ts` — kiểm chứng bằng `npm run check:background`.

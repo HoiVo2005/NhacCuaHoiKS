@@ -25,6 +25,21 @@ export interface PlayerEngine {
   setMuted(muted: boolean): void;
   destroy(): void;
   /**
+   * Trinh phat dang THAT SU phat? (khong khai bao = khong biet)
+   *
+   * Dung khi quay lai tien canh: trinh duyet co the da tu tam dung dong co trong luc trang bi an ma
+   * KHONG bao gi - phai hoi thang de biet co can goi `play()` lan nua khong
+   * (xem `shouldRetryResumePlayback` trong `src/lib/background-playback.ts`).
+   */
+  reportsPlaying?: () => boolean;
+  /**
+   * Am luong duoi 100% tren thiet bi nay do HE THONG quan ly? (trinh duyet bo qua `audio.volume`)
+   *
+   * Co = giao dien nen noi ro cho nguoi dung biet vi sao keo thanh am luong khong doi duoc gi
+   * (xem `needsWebAudioGraph` trong `src/lib/volume.ts` va `AudioEngine.usesWebAudio`).
+   */
+  readonly volumeNeedsSystemControl?: boolean;
+  /**
    * "Ham nong": chuan bi san nen tang truoc khi nguoi dung bam phat.
    *
    * Ly do: API cua cac nen tang (YouTube iframe API ~300KB, SoundCloud Widget API) truoc day

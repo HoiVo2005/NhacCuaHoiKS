@@ -62,3 +62,36 @@ export function shouldResumePlayback(input: {
 }): boolean {
   return input.wantsPlaying && !input.documentHidden && !input.audioSessionInterrupted;
 }
+
+/**
+ * Sau khi quay lai tien canh, cho bao nhieu ms roi kiem tra lai xem nhac da chay chua.
+ *
+ * Ly do: ngay sau khi app duoc danh thuc, lan `play()` dau tien rat de bi bo qua - iOS co the van giu
+ * nguyen trang thai tam dung, con `iframe` cua YouTube/`widget` SoundCloud thi chua kip thuc day. Truoc
+ * day nguoi dung phai tu bam nut Phat; nay trinh phat tu thu lai MOT lan.
+ */
+export const RESUME_RETRY_DELAY_MS = 1_200;
+
+/**
+ * Co nen goi `play()` LAN NUA khong? (goi sau `RESUME_RETRY_DELAY_MS`)
+ *
+ * Phai dung CA BON:
+ *  - `wantsPlaying`: nguoi dung van dang muon nghe (xem `isSystemPause`);
+ *  - trang da o tien canh;
+ *  - he thong khong con ngat quang;
+ *  - `actuallyPlaying = false`: dong co xac nhan no VAN CHUA phat
+ *    (`PlayerEngine.reportsPlaying`; dong co khong ho tro thi bo qua, khong thu lai).
+ */
+export function shouldRetryResumePlayback(input: {
+  wantsPlaying: boolean;
+  documentHidden: boolean;
+  audioSessionInterrupted: boolean;
+  actuallyPlaying: boolean;
+}): boolean {
+  return (
+    input.wantsPlaying &&
+    !input.documentHidden &&
+    !input.audioSessionInterrupted &&
+    !input.actuallyPlaying
+  );
+}

@@ -1,9 +1,14 @@
 import type { SongDTO } from "@/types";
 import { reapplyBackgroundAudioSession } from "@/lib/audio-session";
 import { clampSeekTarget } from "@/lib/seek";
-import { EMBED_MAX_VOLUME, MAX_VOLUME } from "@/lib/volume";
+import { EMBED_MAX_VOLUME, MAX_VOLUME, needsWebAudioGraph } from "@/lib/volume";
 
 import type { PlayerAdapterCallbacks, PlayerEngine } from "./types";
+
+/** Cho bo xu ly 200ms truoc khi thu danh thuc lai (meo trong WebKit bug 281566) */
+const GRAPH_RESUME_DELAY_MS = 200;
+/** Gian cach giua hai lan thu danh thuc (trinh duyet co the ban statechange lien tuc) */
+const GRAPH_RESUME_COOLDOWN_MS = 5_000;
 
 interface AudioGraph {
   context: AudioContext;
@@ -15,6 +20,42 @@ interface AudioGraph {
  * duoc luu theo chinh phan tu do va dung lai cho moi lan khoi tao lai engine.
  */
 const audioGraphs = new WeakMap<HTMLMediaElement, AudioGraph>();
+
+/**
+ * Bo xu ly am thanh (Web Audio) co the bi trinh duyet TREO khi trang ra nen / thiet bi ngu.
+ *
+ * iOS coi Web Audio la am thanh "ambient" nen chan ngay khi app khong con o tien canh (WebKit bug
+ * 198277); tu iOS 17.5 thi `navigator.audioSession.type = "playback"` moi giu duoc (bug 261554).
+ * Rieng iOS con co loi `resume()` KHONG BAO GIO xong khi trinh duyet vua bi treo xuong nen (WebKit
+ * bug 281566) - meo trong chinh bug do: goi `suspend()` TRUOC roi `resume()` sau ~200ms.
+ *
+ * Chi danh thuc khi the <audio> dang o trang thai phat that (`paused === false`) va co gian cach giua
+ * hai lan thu, nen khong the thanh vong lap.
+ */
+function watchGraphResume(context: AudioContext, audio: HTMLMediaElement): void {
+  const listenable = context as AudioContext & {
+    addEventListener?: (type: "statechange", listener: () => void) => void;
+  };
+
+  if (typeof listenable.addEventListener !== "function") return;
+
+  let lastAttemptAt = 0;
+
+  listenable.addEventListener("statechange", () => {
+    if (context.state !== "suspended") return;
+    // Dang tam dung that (hoac vua destroy) thi khong danh thuc
+    if (audio.paused !== false) return;
+
+    const now = Date.now();
+    if (now - lastAttemptAt < GRAPH_RESUME_COOLDOWN_MS) return;
+    lastAttemptAt = now;
+
+    void context.suspend().catch(() => undefined);
+    window.setTimeout(() => {
+      void context.resume().catch(() => undefined);
+    }, GRAPH_RESUME_DELAY_MS);
+  });
+}
 
 /**
  * Tao do thi am thanh: <audio> -> gain -> limiter -> loa.
@@ -47,6 +88,9 @@ function createAudioGraph(audio: HTMLAudioElement): AudioGraph | null {
     gain.connect(limiter);
     limiter.connect(context.destination);
 
+    // Bo xu ly co the bi treo khi app ra nen -> tu danh thuc lai (xem `watchGraphResume`)
+    watchGraphResume(context, audio);
+
     const graph: AudioGraph = { context, gain };
     audioGraphs.set(audio, graph);
     return graph;
@@ -65,6 +109,8 @@ export class AudioEngine implements PlayerEngine {
   private lastReportedSecond = -1;
   private graph: AudioGraph | null = null;
   private volume = 1;
+  /** Trinh duyet bo qua `audio.volume` (iOS Safari) -> muc duoi 100% do he thong quan ly */
+  private elementVolumeIgnored = false;
 
   constructor(audio: HTMLAudioElement, callbacks: PlayerAdapterCallbacks) {
     this.audio = audio;
@@ -220,9 +266,9 @@ export class AudioEngine implements PlayerEngine {
 
   /**
    * Am luong 0..MAX_VOLUME (1 = am luong goc, >1 = khuech dai).
-   * Voi <audio>, muc >100% duoc xu ly bang GainNode (Web Audio API).
-   * Neu trinh duyet bo qua viec dat `audio.volume` (vi du iOS Safari), he thong tu
-   * dong chuyen sang GainNode cho ca muc duoi 100% - nho do van chinh duoc am luong.
+   *
+   * Voi <audio>, muc >100% duoc xu ly bang GainNode (Web Audio API) - xem `ensureGraph` de biet vi sao
+   * muc <=100% KHONG dung Web Audio nua.
    */
   setVolume(volume: number): void {
     this.volume = Math.min(Math.max(Number.isFinite(volume) ? volume : 1, 0), MAX_VOLUME);
@@ -230,35 +276,70 @@ export class AudioEngine implements PlayerEngine {
     this.applyVolume();
   }
 
-  private ensureGraph(force = false): void {
+  /** Trinh phat dang THAT SU phat? (dung khi quay lai tien canh - xem `PlayerEngine.reportsPlaying`) */
+  reportsPlaying(): boolean {
+    return this.audio.paused === false;
+  }
+
+  /** Do thi Web Audio dang duoc dung? (chi xay ra khi nguoi dung chon tren 100%) */
+  get usesWebAudio(): boolean {
+    return Boolean(this.graph);
+  }
+
+  /**
+   * Am luong duoi 100% tren thiet bi nay do HE THONG quan ly? (trinh duyet bo qua `audio.volume`)
+   *
+   * Giao dien dung gia tri nay de noi ro cho nguoi dung vi sao keo thanh am luong khong doi duoc gi
+   * (thay vi lang le chuyen sang Web Audio nhu truoc).
+   */
+  get volumeNeedsSystemControl(): boolean {
+    return this.elementVolumeIgnored;
+  }
+
+  /**
+   * Do thi am thanh CHI duoc tao khi nguoi dung muon TO HON ban goc (> 100%) - xem `needsWebAudioGraph`.
+   *
+   * LICH SU LOI "dang nghe ma chuyen sang ung dung khac la mat nhac": truoc day, khi thay trinh duyet
+   * bo qua `audio.volume` (iOS Safari), trinh phat TU DONG tao do thi Web Audio de giam am luong. Do
+   * la duong chet: iOS coi Web Audio la am thanh "ambient" nen CHAN ngay khi app khong con o tien canh
+   * (WebKit bug 198277), iOS < 17.5 khong danh thuc lai duoc (bug 261554) va `resume()` co the treo vinh
+   * vien (bug 281566). The <audio> thuong thi phat nen binh thuong tu iOS 15.4 - nen GIU the, khong Web Audio.
+   *
+   * Do thi da tao thi KHONG the go ra (mot the <audio> chi tao duoc mot MediaElementSourceNode), vi vay
+   * khi the da co do thi tu lan khuech dai truoc thi dung lai do thi do - neu khong am luong se bi dat
+   * theo gain cu (nguoi dung nghe to/nho sai).
+   */
+  private ensureGraph(): void {
     if (this.graph) return;
-    // Trong pham vi 100% thi khong can Web Audio (tru khi trinh duyet bo qua am luong)
-    if (!force && this.volume <= EMBED_MAX_VOLUME) return;
+
+    const existing = audioGraphs.get(this.audio);
+    if (existing) {
+      this.graph = existing;
+      this.resumeGraphIfSuspended();
+      return;
+    }
+
+    if (!needsWebAudioGraph(this.volume)) return;
 
     this.graph = createAudioGraph(this.audio);
     if (!this.graph) {
+      // Trinh duyet khong ho tro Web Audio -> chi dung duoc toi da 100%
       this.audio.volume = EMBED_MAX_VOLUME;
       return;
     }
 
-    // Do thi co the duoc tao ngoai hanh dong nguoi dung -> bao dam bo xu ly dang chay
-    if (this.graph.context.state === "suspended") {
-      void this.graph.context.resume().catch(() => undefined);
-    }
+    this.resumeGraphIfSuspended();
+  }
+
+  /** Bo xu ly co the bi trinh duyet treo khi trang o nen -> danh thuc lai */
+  private resumeGraphIfSuspended(): void {
+    const context = this.graph?.context;
+    if (!context || context.state !== "suspended") return;
+
+    void context.resume().catch(() => undefined);
   }
 
   private applyVolume(): void {
-    if (!this.graph) {
-      const target = Math.min(this.volume, EMBED_MAX_VOLUME);
-      this.audio.volume = target;
-
-      // iOS Safari bo qua viec dat am luong cua the <audio> (giu nguyen 100%)
-      // -> phai dung GainNode de thuc su giam am luong.
-      if (this.volume <= EMBED_MAX_VOLUME && this.audio.volume > target + 0.01) {
-        this.ensureGraph(true);
-      }
-    }
-
     if (this.graph) {
       // Gain > 1 => am thanh lon hon ban goc; limiter phia sau chong vo tieng
       this.graph.gain.gain.value = this.volume;
@@ -266,7 +347,15 @@ export class AudioEngine implements PlayerEngine {
       return;
     }
 
-    this.audio.volume = Math.min(this.volume, EMBED_MAX_VOLUME);
+    const target = Math.min(this.volume, EMBED_MAX_VOLUME);
+    this.audio.volume = target;
+
+    /*
+     * Doc lai de biet trinh duyet co bo qua viec dat am luong khong (iOS Safari giu nguyen 100%).
+     * Chi dung de GIAI THICH cho nguoi dung (`volumeNeedsSystemControl`) - KHONG tao Web Audio nua
+     * (xem `ensureGraph`): doi am luong trong app khong dang de mat kha nang nghe khi ra nen.
+     */
+    this.elementVolumeIgnored = this.audio.volume > target + 0.01;
   }
 
   setMuted(muted: boolean): void {

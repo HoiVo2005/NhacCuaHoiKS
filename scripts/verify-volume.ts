@@ -21,6 +21,7 @@ import {
   isBoosted,
   MAX_VOLUME,
   maxVolumeFor,
+  needsWebAudioGraph,
   VOLUME_MARKER_PERCENT,
 } from "../src/lib/volume";
 import type { SongDTO } from "../src/types";
@@ -315,8 +316,25 @@ async function main(): Promise<void> {
 
   check("destroy() tam dung bo xu ly am thanh", stats.suspended === 1, String(stats.suspended));
 
-  // --------- 7b. Trinh duyet bo qua `audio.volume` (iOS Safari) -> dung GainNode thay the -------
+  // --------- 7b. Trinh duyet bo qua `audio.volume` (iOS Safari): GIU <audio>, KHONG dung Web Audio ---
+  /*
+   * Khoa lai vi sao: iOS coi Web Audio (`AudioContext`) la am thanh "ambient" nen CHAN ngay khi app
+   * khong con o tien canh (WebKit bug 198277); iOS < 17.5 khong danh thuc lai duoc (bug 261554) va
+   * `resume()` co the treo vinh vien (bug 281566). Truoc day trinh phat tu dong tao do thi Web Audio
+   * cho moc duoi 100% khi thay `audio.volume` bi bo qua -> dung loi "dang nghe ma chuyen sang ung dung
+   * khac la mat nhac" (xem `needsWebAudioGraph` trong `src/lib/volume.ts`).
+   */
+  check(
+    "Muc <= 100%: KHONG dung Web Audio (ke ca khi trinh duyet bo qua audio.volume)",
+    !needsWebAudioGraph(0) && !needsWebAudioGraph(0.8) && !needsWebAudioGraph(EMBED_MAX_VOLUME),
+  );
+  check(
+    "Muc > 100%: moi dung Web Audio de khuech dai",
+    needsWebAudioGraph(1.01) && needsWebAudioGraph(MAX_VOLUME),
+  );
+
   const createdBefore = stats.created;
+  const gainsBefore = stats.gains.length;
   const stubbornAudio = new FakeAudio();
   stubbornAudio.ignoreVolumeSet = true;
 
@@ -324,20 +342,45 @@ async function main(): Promise<void> {
   stubbornEngine.setVolume(0.4);
 
   check(
-    "Trinh duyet bo qua audio.volume (iOS): tu dong chuyen sang do thi Web Audio",
-    stats.created === createdBefore + 1 && stubbornAudio.volume === 1,
-    `created=${stats.created} audio=${stubbornAudio.volume}`,
+    "Trinh duyet bo qua audio.volume (iOS): KHONG tao do thi Web Audio",
+    stats.created === createdBefore && !stubbornEngine.usesWebAudio,
+    `created=${stats.created}`,
   );
   check(
-    "iOS: muc 40% duoc ap dung bang gain (the <audio> giu 100%)",
-    stats.gains[stats.gains.length - 1] === 0.4,
-    String(stats.gains[stats.gains.length - 1]),
+    "Trinh duyet bo qua audio.volume (iOS): khong dat gain nao (khong co do thi)",
+    stats.gains.length === gainsBefore,
+    `gains=${stats.gains.length - gainsBefore}`,
+  );
+  check(
+    "Trinh duyet bo qua audio.volume (iOS): bao cho giao dien biet am luong do he thong quan ly",
+    stubbornEngine.volumeNeedsSystemControl,
   );
 
   stubbornEngine.setVolume(0.9);
   check(
-    "iOS: chinh tiep am luong van dung do thi da tao (khong tao lai do thi)",
-    stats.created === createdBefore + 1 && stats.gains[stats.gains.length - 1] === 0.9,
+    "iOS: chinh tiep trong khoang 0..100% van KHONG tao do thi",
+    stats.created === createdBefore,
+    `created=${stats.created}`,
+  );
+
+  stubbornEngine.setVolume(1.4);
+  check(
+    "iOS: nguoi dung chon tren 100% -> moi tao do thi (nhuong kha nang nghe nen de doi am luong lon hon)",
+    stats.created === createdBefore + 1 && stubbornEngine.usesWebAudio,
+    `created=${stats.created}`,
+  );
+
+  // The <audio> da co do thi (khong the go ra) -> engine moi tren cung the phai dung lai do thi do,
+  // neu khong gain cu se giu nguyen va nguoi dung nghe sai am luong.
+  const afterBoostEngine = makeEngine(stubbornAudio);
+  const createdAfterBoost = stats.created;
+
+  afterBoostEngine.setVolume(0.5);
+  check(
+    "The <audio> da co do thi: engine moi dung lai do thi cu (khong tao them, gain dung 50%)",
+    stats.created === createdAfterBoost &&
+      stats.gains[stats.gains.length - 1] === 0.5 &&
+      afterBoostEngine.usesWebAudio,
     `created=${stats.created} gain=${stats.gains[stats.gains.length - 1]}`,
   );
 

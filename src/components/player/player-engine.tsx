@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef } from "react";
 
+import { toast } from "sonner";
+
 import { useSessionUser } from "@/components/auth/session-context";
 import {
   applyBackgroundAudioSession,
@@ -10,8 +12,14 @@ import {
   reapplyBackgroundAudioSession,
   watchAudioSessionState,
 } from "@/lib/audio-session";
-import { isSystemPause, shouldResumePlayback } from "@/lib/background-playback";
+import {
+  isSystemPause,
+  RESUME_RETRY_DELAY_MS,
+  shouldResumePlayback,
+  shouldRetryResumePlayback,
+} from "@/lib/background-playback";
 import { cn } from "@/lib/utils";
+import { EMBED_MAX_VOLUME } from "@/lib/volume";
 import { usePlayerStore, type VideoMode } from "@/store/player-store";
 import type { SongDTO } from "@/types";
 
@@ -99,6 +107,9 @@ export function PlayerEngine() {
 
   /** Chan gui trung: chi mot request ghi lich su dang bay tai mot thoi diem */
   const historyInFlightRef = useRef(false);
+
+  /** Da noi cho nguoi dung biet am luong do he thong quan ly chua (chi noi MOT lan moi phien) */
+  const volumeNoticeShownRef = useRef(false);
 
   const current = usePlayerStore((state) => state.current);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -296,14 +307,19 @@ export function PlayerEngine() {
    *
    * Trình duyệt coi trang đang ẩn là không còn hoạt động: loại phiên âm thanh có thể bị đưa về `"auto"`
    * (iOS lại xếp Web Audio vào nhóm âm thanh nền -> đang nghe mà mở app khác là nhạc dừng) và phiên
-   * phát có thể bị tạm dừng. Vì vậy ở đây làm ba việc:
+   * phát có thể bị tạm dừng. Vì vậy ở đây làm bốn việc:
    *  1. Đặt lại loại phiên âm thanh NGAY lúc trang bị ẩn và mỗi lần quay lại tiền cảnh.
    *  2. Quay lại tiền cảnh: nếu người dùng vẫn đang nghe thì tự phát tiếp - trình duyệt tự tạm dừng lúc
    *     ở nền nhưng KHÔNG tự phát lại.
    *  3. Hệ thống hết ngắt quãng (cuộc gọi kết thúc / ứng dụng khác nhả quyền phát): cũng phát tiếp, vì
    *     thẻ <audio> có thể đã bị tạm dừng mà không tự chạy lại.
+   *  4. Sau khi quay lại, nếu động cơ XÁC NHẬN nó vẫn chưa phát thì thử phát lại một lần nữa - lệnh phát
+   *     đầu tiên rất dễ bị bỏ qua ngay khi app vừa được hệ thống đánh thức (`shouldRetryResumePlayback`).
    */
   useEffect(() => {
+    /** Cac hen gio kiem tra lai sau khi quay lai tien canh (don sach khi unmount) */
+    const retryTimers: number[] = [];
+
     /** Phát tiếp nếu người dùng vẫn đang nghe mà phiên phát bị hệ thống tạm dừng */
     const resumeIfNeeded = (): void => {
       const state = usePlayerStore.getState();
@@ -325,6 +341,29 @@ export function PlayerEngine() {
        * tải lên, `AudioEngine.play()` còn đánh thức lại `AudioContext` mà trình duyệt treo lúc ở nền.
        */
       void engine.play();
+
+      /*
+       * Thử LẦN THỨ HAI sau một nhịp: ngay khi app vừa được đánh thức, lệnh phát đầu tiên rất dễ bị bỏ
+       * qua (iOS có thể vẫn giữ trạng thái tạm dừng, `iframe` YouTube chưa kịp thức) — trước đây người
+       * dùng phải tự bấm nút Phát. Chỉ thử khi động cơ XÁC NHẬN nó vẫn chưa phát.
+       */
+      if (!engine.reportsPlaying) return;
+
+      const timer = window.setTimeout(() => {
+        const latest = usePlayerStore.getState();
+
+        const retry = shouldRetryResumePlayback({
+          wantsPlaying: latest.isPlaying,
+          documentHidden: document.visibilityState === "hidden",
+          audioSessionInterrupted: isAudioSessionInterrupted(currentAudioSessionHost()),
+          actuallyPlaying: engine.reportsPlaying?.() ?? true,
+        });
+        if (!retry) return;
+
+        void engine.play();
+      }, RESUME_RETRY_DELAY_MS);
+
+      retryTimers.push(timer);
     };
 
     const onVisibilityChange = (): void => {
@@ -353,6 +392,8 @@ export function PlayerEngine() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pageshow", onPageShow);
       unwatchAudioSession?.();
+
+      for (const timer of retryTimers) window.clearTimeout(timer);
     };
   }, []);
 
@@ -431,6 +472,25 @@ export function PlayerEngine() {
 
     engine.setVolume(volume);
     engine.setMuted(muted);
+
+    /*
+     * iOS/iPad: trình duyệt bỏ qua việc đặt `audio.volume`, mà trình phát cố ý KHÔNG dùng Web Audio
+     * cho mức ≤ 100% (Web Audio bị iOS coi là âm thanh "ambient" nên chặn ngay khi app ra nền —
+     * xem `needsWebAudioGraph`). Nói rõ một lần để người dùng không tưởng thanh âm lượng bị lỗi.
+     */
+    if (
+      !volumeNoticeShownRef.current &&
+      engine.volumeNeedsSystemControl &&
+      !muted &&
+      volume < EMBED_MAX_VOLUME - 0.01
+    ) {
+      volumeNoticeShownRef.current = true;
+      toast.info("Thiết bị này do hệ thống quản lý âm lượng", {
+        description:
+          "iPhone/iPad không cho ứng dụng đổi âm lượng dưới 100%. Ứng dụng giữ nguyên để nhạc vẫn phát khi bạn mở ứng dụng khác — hãy dùng nút âm lượng của máy.",
+        duration: 8_000,
+      });
+    }
      
   }, [volume, muted, current?.id]);
 
@@ -610,7 +670,18 @@ export function PlayerEngine() {
         `metadata` nen chi tai phan header -> bam phat moi bat dau tai, bai nhac khoi dong cham
         va de giat khi mang yeu). Chi engine UPLOADED dung the nay nen khong tai thua bai khac.
       */}
-      <audio ref={audioRef} preload="auto" className="hidden" />
+      {/*
+        KHÔNG dùng `display: none` (class `hidden` của Tailwind) cho thẻ <audio>: Chromium coi
+        `display: none` là "không được vẽ" trong chính sách `media-playback-while-not-visible` (nhánh
+        Web Audio của chính sách này chuyển `AudioContext` sang trạng thái `interrupted`), còn Safari
+        thì treo âm thanh của thẻ bị ẩn. Giữ thẻ TRONG cây hiển thị nhưng 1×1 px + trong suốt — cùng
+        cách làm với khung video của các nguồn nhúng ở dưới.
+      */}
+      <audio
+        ref={audioRef}
+        preload="auto"
+        className="pointer-events-none fixed bottom-0 left-0 size-[1px] opacity-0"
+      />
       <div
         ref={youtubeRef}
         aria-hidden={current?.sourceType !== "YOUTUBE"}

@@ -419,6 +419,11 @@ export class YouTubeEngine implements PlayerEngine {
     this.player!.pauseVideo();
   }
 
+  /** Trinh phat dang THAT SU phat? (dung khi quay lai tien canh - xem `PlayerEngine.reportsPlaying`) */
+  reportsPlaying(): boolean {
+    return this.playerReportsPlaying();
+  }
+
   seek(seconds: number): void {
     const target = Math.max(0, seconds);
 

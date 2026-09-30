@@ -55,3 +55,21 @@ export function clampVolumeFor(sourceType: string | null | undefined, volume: nu
 
 /** Vi tri (%) cua vach moc "100% am luong goc" tren thanh truot 0..MAX */
 export const VOLUME_MARKER_PERCENT = (EMBED_MAX_VOLUME / MAX_VOLUME) * 100;
+
+/**
+ * Co phai dung do thi Web Audio (GainNode) cho muc am luong nay khong?
+ *
+ * CHI khi nguoi dung muon TO HON ban goc (> 100%) - vi the `<audio>` khong lam duoc.
+ *
+ * Vi sao khong dung Web Audio cho muc <= 100% (dù trinh duyet bo qua `audio.volume`):
+ * iOS coi Web Audio (`AudioContext`) la am thanh **"ambient"** va CHAN ngay khi app khong con o tien
+ * canh (WebKit bug 198277). iOS < 17.5 khong "danh thuc" lai duoc (bug 261554), va `resume()` co the
+ * treo vinh vien (bug 281566). Do la nguyen nhan loi "dang nghe ma chuyen sang ung dung khac la mat
+ * nhac" - trong khi the `<audio>` thuong thi phat nen binh thuong tu iOS 15.4.
+ *
+ * LUU Y: khi do thi da duoc tao (do nguoi dung tung khuech dai > 100%) thi khong the go ra nua -
+ * xem `AudioEngine.ensureGraph()` (do thi duoc dung lai theo tung the `<audio>`).
+ */
+export function needsWebAudioGraph(volume: number): boolean {
+  return clampVolume(volume) > EMBED_MAX_VOLUME + 0.001;
+}

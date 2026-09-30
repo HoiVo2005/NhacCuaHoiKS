@@ -24,8 +24,11 @@ import {
 import {
   INTERRUPTION_PAUSE_GRACE_MS,
   isSystemPause,
+  RESUME_RETRY_DELAY_MS,
   shouldResumePlayback,
+  shouldRetryResumePlayback,
 } from "@/lib/background-playback";
+import { needsWebAudioGraph } from "@/lib/volume";
 
 const results: string[] = [];
 
@@ -86,6 +89,38 @@ check(
   "He thong dang ngat quang (cuoc goi / app khac chiem quyen phat) -> KHONG phat tiep",
   !shouldResumePlayback({ ...canResume, audioSessionInterrupted: true }),
 );
+
+/* ------------- 2b. Thu lai MOT lan sau khi quay lai tien canh (lan dau rat de bi bo qua) ------------ */
+
+/** Quay lai tien canh, van muon nghe, nhung dong co bao no CHUA phat */
+const notResumed = { ...canResume, actuallyPlaying: false };
+
+check("Cho 1,2 giay roi moi kiem tra lai (khong spam lenh phat)", RESUME_RETRY_DELAY_MS === 1_200);
+check("Dong co bao CHUA phat -> goi `play()` lan nua", shouldRetryResumePlayback(notResumed));
+check(
+  "Dong co bao DANG phat -> khong goi lai (khong lam nhac giat)",
+  !shouldRetryResumePlayback({ ...notResumed, actuallyPlaying: true }),
+);
+check(
+  "Nguoi dung da bam tam dung -> khong thu lai",
+  !shouldRetryResumePlayback({ ...notResumed, wantsPlaying: false }),
+);
+check(
+  "Trang lai bi an -> khong thu lai",
+  !shouldRetryResumePlayback({ ...notResumed, documentHidden: true }),
+);
+check(
+  "He thong con ngat quang -> khong thu lai",
+  !shouldRetryResumePlayback({ ...notResumed, audioSessionInterrupted: true }),
+);
+
+/* ------------- 2c. Khong de Web Audio giet nhac khi ra nen (nguyen nhan chinh) ------------- */
+
+check(
+  "Muc <= 100%: KHONG dung Web Audio (iOS coi Web Audio la am thanh nen -> chan khi ra ngoai)",
+  !needsWebAudioGraph(0) && !needsWebAudioGraph(0.8) && !needsWebAudioGraph(1),
+);
+check("Chi muc > 100% moi dung Web Audio (khuech dai)", needsWebAudioGraph(1.5));
 
 /* --------------------- 3. Phien am thanh phai duoc DAT LAI khi bi xoa --------------------- */
 
@@ -222,10 +257,38 @@ check(
   youtubeSource.includes("playerReportsPlaying()") && youtubeSource.includes("getPlayerState()"),
 );
 check(
+  "Quay lai tien canh: thu lai lan hai khi dong co xac nhan van chua phat",
+  engineSource.includes("shouldRetryResumePlayback({") &&
+    engineSource.includes("reportsPlaying?.()") &&
+    engineSource.includes("RESUME_RETRY_DELAY_MS"),
+);
+check(
+  "The <audio> khong bi dat `display: none` (Chromium coi do la \"khong duoc ve\" -> co the tam dung am thanh)",
+  !engineSource.includes('className="hidden"') &&
+    engineSource.includes("pointer-events-none fixed bottom-0 left-0 size-[1px] opacity-0"),
+);
+check(
+  "File tai len: KHONG tu dong tao do thi Web Audio cho muc <= 100% (nguyen nhan mat nhac khi ra nen)",
+  audioEngineSource.includes("needsWebAudioGraph") && !audioEngineSource.includes("ensureGraph(true)"),
+);
+check(
+  "Do thi Web Audio (chi khi khuech dai) tu danh thuc lai khi bi treo - theo meo trong WebKit bug 281566",
+  audioEngineSource.includes("watchGraphResume") &&
+    audioEngineSource.includes('addEventListener("statechange"') &&
+    audioEngineSource.includes("GRAPH_RESUME_DELAY_MS"),
+);
+check(
+  "iOS: bao cho giao dien biet am luong do he thong quan ly (thay vi am tham chuyen sang Web Audio)",
+  audioEngineSource.includes("volumeNeedsSystemControl") &&
+    engineSource.includes("engine.volumeNeedsSystemControl"),
+);
+check(
   "README ghi lai hanh vi + lenh kiem chung",
   readmeSource.includes("check:background") &&
     readmeSource.includes("quay lại tiền cảnh") &&
-    readmeSource.includes("Nghe nhạc khi chuyển sang tab"),
+    readmeSource.includes("Nghe nhạc khi chuyển sang tab") &&
+    readmeSource.includes("ambient") &&
+    readmeSource.includes("needsWebAudioGraph"),
 );
 
 /* --------------------------------- Ket qua --------------------------------- */
