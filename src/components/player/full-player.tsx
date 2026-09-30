@@ -21,6 +21,7 @@ import { AddToPlaylistDialog } from "@/components/music/add-to-playlist-dialog";
 import { FavoriteButton } from "@/components/music/favorite-button";
 import { LyricsPanel } from "@/components/player/lyrics-panel";
 import { MixButton } from "@/components/player/mix-button";
+import { NowPlayingVisualizer } from "@/components/player/now-playing-visualizer";
 import { RangeInput } from "@/components/player/range-input";
 import { registerVideoSlot } from "@/components/player/video-stage";
 import { Artwork } from "@/components/ui/artwork";
@@ -169,6 +170,13 @@ export function FullPlayer() {
               <span className="text-6xl text-muted-foreground">♪</span>
             )}
           </div>
+
+          {/*
+            Hieu ung song nhac cho phan chi tiet bai hat (duoi bia/nut video, tren ten bai).
+            Component tu an tren dien thoai (`hidden lg:block`) va tu dung lai khi tam dung -
+            xem `src/components/player/now-playing-visualizer.tsx`.
+          */}
+          <NowPlayingVisualizer />
 
           <div className="w-full space-y-2 px-1 text-center">
             <h2 className="text-balance text-xl font-semibold leading-tight sm:text-2xl">

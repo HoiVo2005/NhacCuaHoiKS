@@ -43,6 +43,7 @@
     "check:sleep": "tsx scripts/verify-sleep-timer.ts",
     "check:video": "tsx scripts/verify-video-stage.ts",
     "check:theme": "tsx scripts/verify-theme.ts",
+    "check:visualizer": "tsx scripts/verify-visualizer.ts",
     "check:history": "tsx scripts/verify-history.ts",
     "check:recent": "tsx scripts/verify-recent.ts",
     "check:mix": "tsx scripts/verify-mix.ts",

@@ -104,7 +104,7 @@ Mọi bề mặt đều dựng từ **một primitive dùng lại** thay vì m�
 | `equalize-bars`     | Sóng nhạc động báo “đang phát” (thay cho ký tự ♪ tĩnh)                                                                                                               |
 | `bg-gradient-brand` | Nền gradient 2 mốc đậm của nút/logo/avatar **và ô tick** — khai báo bằng `@utility` nên dùng được với biến thể (`data-[state=checked]:bg-gradient-brand`, `hover:`…) |
 | Bóng 4 cấp          | `shadow-soft` · `shadow-card` · `shadow-float` · `shadow-brand` (token `--elev-*`, khác nhau ở 2 giao diện)                                                          |
-| Chuyển động         | `animate-fade-up` (section hiện dần) · `animate-shimmer` (vệt sáng chạy qua khung xương)                                                                             |
+| Chuyển động         | `animate-fade-up` (section hiện dần) · `animate-shimmer` (vệt sáng chạy qua khung xương) · `animate-equalize` (dải sóng nhạc ở trình phát đầy đủ — chỉ desktop) |
 
 Quy ước áp dụng:
 
@@ -201,6 +201,19 @@ Quy ước áp dụng:
     như v3), nên chỉ đặt `transform: none` là **không đủ** — phép dịch `-50%` còn lại sẽ đẩy video lệch
     sang trái đúng nửa chiều rộng (lỗi “video không nằm chính giữa”).
   - Kiểm chứng bằng `npm run check:video`.
+- **Hiệu ứng sóng nhạc ở phần chi tiết bài hát — CHỈ trên desktop** (từ 1024px): ngay dưới bìa/khung video
+  là dải cột nhún theo nhịp khi nhạc đang chạy, kèm quầng sáng gradient mờ phía sau; **tạm dừng thì dải
+  cột đứng yên ở mức thấp** và quầng sáng tắt. Trên điện thoại **không hiện** (khung chi tiết đã chật,
+  56 cột animation chạy liên tục chỉ tốn pin) — component tự ẩn bằng `hidden lg:block`.
+  - Cấu hình cột sinh bằng hàm **thuần** `visualizerBars()` (`src/lib/visualizer.ts`), **không dùng
+    `Math.random()`**: máy chủ và trình duyệt phải vẽ ra y hệt nhau, nếu không sẽ **lệch hydration**
+    (React cảnh báo và hiệu ứng giật ngay khi mở trình phát).
+  - Tái dùng keyframe `equalize` sẵn có nên hiệu ứng **tự tắt khi người dùng bật “giảm chuyển động”**
+    của hệ điều hành (`prefers-reduced-motion`), không phát sinh CSS mới.
+  - **Không phân tích âm thanh thật**: `AnalyserNode` buộc phải có `createMediaElementSource`, tức là
+    đẩy âm thanh qua Web Audio — đúng thứ iOS chặn khi app ra nền (xem mục “Nghe nhạc khi chuyển sang
+    tab / ứng dụng khác” bên dưới). Vì vậy hiệu ứng chỉ **mô phỏng bằng CSS**, không đụng luồng âm thanh.
+  - Kiểm chứng bằng `npm run check:visualizer`.
 - Điều khiển bằng API/SDK **chính thức** của từng nền tảng:
   - YouTube: IFrame Player API
   - SoundCloud: Widget API
@@ -920,6 +933,7 @@ npm run check:seek    # Test thanh thoi gian: keo-tha, khong nhay nguoc, gioi ha
 npm run check:sleep   # Test hen gio tat nhac (dem nguoc theo phut + tat sau N bai, khong luu khi tai lai)
 npm run check:video   # Test video toan man hinh cuon theo noi dung (khong dung yen, khong de len header)
 npm run check:theme   # Test bang mau 2 giao dien (du token, tuong phan WCAG, het mau le)
+npm run check:visualizer # Test hieu ung song nhac o trinh phat day du (chi desktop, thuan tinh, khong Web Audio)
 npm run check:history # Test luong ghi lich su nghe (khong spam request, chi ghi khi co tien trien)
 npm run check:recent  # Test muc "Nghe tiep" khong lap lai mot bai nhieu lan
 npm run check:mix     # Test "Mix quanh bai nay" (cham diem tuong dong, xep hang on dinh, mix that tren CSDL)
