@@ -6,6 +6,11 @@
  *   `prisma migrate deploy` khi container khởi động. Nguyên nhân: (a) migrate chạy qua chuỗi
  *   pooled của Neon, (b) hai deploy chạy song song nên tranh lock, (c) container bị kill giữa lúc
  *   migrate để lại lock treo trên Neon. Bộ kiểm này canh những điều đó không bị làm hỏng lại.
+ *
+ *   Kiểm luôn workflow "keep-warm": gói free của Render tắt web service sau ~15 phút không có
+ *   request (người dùng phải chờ màn hình "SERVICE WAKING UP" 30–60 giây). File
+ *   `.github/workflows/keep-warm.yml` ping `/api/health` mỗi 10 phút để dịch vụ không ngủ - xoá
+ *   hoặc sửa hỏng file đó là hiện tượng chờ lại xuất hiện.
  */
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -25,6 +30,7 @@ const prismaConfig = read("prisma.config.ts");
 const renderYaml = read("render.yaml");
 const writeEnvScript = read("scripts/write-env.cjs");
 const readme = read("README.md");
+const keepWarmWorkflow = read(".github/workflows/keep-warm.yml");
 
 check(
   "Dockerfile khoi dong qua `scripts/docker-start.cjs` (khong nhoi shell dai vao CMD)",
@@ -95,6 +101,17 @@ check(
 check(
   "Health bao ban dang chay (RENDER_GIT_COMMIT) de kiem tra duoc deploy nao dang song",
   read("src/app/api/health/route.ts").includes("RENDER_GIT_COMMIT"),
+);
+
+check(
+  "Workflow keep-warm: ping /api/health moi 10 phut + chay tay duoc (goi Render free khong ngu)",
+  keepWarmWorkflow.includes("*/10 * * * *") &&
+    keepWarmWorkflow.includes("workflow_dispatch") &&
+    keepWarmWorkflow.includes("/api/health") &&
+    /* Ping truot chi canh bao, khong danh dau that bai -> tranh email loi moi 10 phut */
+    keepWarmWorkflow.includes("::warning::") &&
+    /* Tai lieu phai noi ro file nay de xoa/doi khi nang goi */
+    readme.includes(".github/workflows/keep-warm.yml"),
 );
 
 check(
