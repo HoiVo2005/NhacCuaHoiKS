@@ -1,0 +1,74 @@
+# =============================================================================
+# Giu am (keep-warm) dich vu Render - CHI CAN THIET voi goi mien phi
+# -----------------------------------------------------------------------------
+# Van de: goi `free` cua Render TAT web service sau ~15 phut khong co request.
+# Lan vao tiep theo nguoi dung phai cho 30-60 giay (man hinh "SERVICE WAKING UP"
+# cua Render) - do la edge proxy cua Render cho container khoi dong lai, KHONG
+# phai loi cua ung dung (luc do app chua he chay).
+#
+# Cach xu ly re tien: mot cron ben ngoai goi /api/health moi 10 phut -> dich vu
+# khong bao gio "ngu". Workflow nay lam dung viec do bang GitHub Actions.
+#
+# Cach dung:
+#   1. Day file nay len nhanh `main` (autoDeploy cua render.yaml khong anh huong).
+#   2. Neu ten mien khac, vao GitHub -> Settings -> Secrets and variables ->
+#      Actions -> tab Variables -> tao bien APP_URL = https://ten-mien-cua-ban
+#      (khong can cung cap cung duoc: mac dinh o duoi la nhaccuahoiks.onrender.com).
+#   3. Tab Actions -> chon "keep-warm" -> Run workflow de chay thu mot lan.
+#
+# LUU Y:
+#   - Goi free cho 750 gio instance/thang. Giu 1 dich vu thuc 24/7 ton ~730 gio
+#     -> con nam trong han muc, nhung DUNG giu am tu 2 dich vu tro len.
+#   - GitHub tu VO HIEU workflow theo lich sau 60 ngay repo khong co hoat dong
+#     (GitHub gui email nhac; chi can vao repo bam "Enable workflow" la xong).
+#   - Khong dung dung cach nay thay cho nang cap goi: nen tang van co the siet
+#     chinh sach, va gioi han 750h/thang la cua CA workspace Render.
+#   - Doi Render sang goi tra phi (hoac self-host bang Dockerfile trong repo)
+#     thi XOA file nay, khong can thiet nua.
+# =============================================================================
+name: keep-warm
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: keep-warm
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping /api/health
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+        run: |
+          set -uo pipefail
+          base="${APP_URL:-https://nhaccuahoiks.onrender.com}"
+          url="${base%/}/api/health"
+          code="000"
+
+          # Container vua "thuc" co the mat 30-60s -> thu lai vai lan, moi lan cho 20s.
+          for attempt in 1 2 3; do
+            echo "Lan thu ${attempt}: ${url}"
+            code=$(curl -sS -o /tmp/health.json -w '%{http_code}' \
+              --max-time 90 --retry 2 --retry-delay 5 "$url" || echo "000")
+            echo "HTTP ${code}"
+            cat /tmp/health.json 2>/dev/null || true
+            if [ "$code" = "200" ]; then
+              echo "Dich vu dang thuc - giu am thanh cong."
+              exit 0
+            fi
+            sleep 20
+          done
+
+          # KHONG danh dau job that bai: mot lan ping truot (dang deploy, Neon cham)
+          # khong phai su co - tranh gui email that bai moi 10 phut.
+          echo "::warning::Khong ping duoc ${url} (HTTP ${code}) - kiem tra Render dashboard."
+          exit 0
