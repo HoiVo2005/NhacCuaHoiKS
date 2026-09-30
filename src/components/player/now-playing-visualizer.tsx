@@ -1,11 +1,24 @@
 "use client";
 
-import { useCallback, useRef, useSyncExternalStore } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 
 import { useIsDesktop, usePrefersReducedMotion } from "@/hooks/use-media-query";
 import { useVisualizerFrame } from "@/hooks/use-visualizer-levels";
 import {
+  alignVisualizerBeatTo,
+  DEFAULT_VISUALIZER_BEAT,
+  isDefaultVisualizerBeat,
+  resetVisualizerBeat,
+  setVisualizerBeat,
+  subscribeVisualizerBeat,
+  visualizerBeat,
+  type VisualizerBeat,
+} from "@/components/player/visualizer-beat";
+import {
+  clampBpm,
   levelToScale,
+  pruneTaps,
+  tapTempo,
   visualizerBars,
   VISUALIZER_BAR_COUNT,
   type VisualizerMode,
@@ -42,7 +55,6 @@ const MOTION_STORAGE_KEY = "nhaccuahoiks-visualizer-motion";
 
 /** Nhớ trong phiên khi trình duyệt chặn localStorage */
 let motionMemory = false;
-
 const motionListeners = new Set<() => void>();
 
 /**
@@ -92,6 +104,15 @@ function subscribeMotionOverride(onChange: () => void): () => void {
   };
 }
 
+/** Snapshot cho SSR (nhịp mặc định) — `useSyncExternalStore` cần hàm trả về giá trị ỔN ĐỊNH */
+function getDefaultBeatSnapshot(): VisualizerBeat {
+  return DEFAULT_VISUALIZER_BEAT;
+}
+
+/** Class dùng chung cho các nút nhỏ ở hàng nhãn */
+const CONTROL_CLASS =
+  "rounded-full border border-border-strong px-2 py-0.5 text-[10px] normal-case tracking-normal text-foreground transition hover:border-primary/50 hover:text-primary";
+
 
 export function NowPlayingVisualizer({ className }: { className?: string }) {
   const barRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -127,6 +148,45 @@ export function NowPlayingVisualizer({ className }: { className?: string }) {
   }, []);
 
   const mode = useVisualizerFrame({ count: BARS.length, enabled: motionAllowed, apply });
+
+  const beat = useSyncExternalStore(subscribeVisualizerBeat, visualizerBeat, getDefaultBeatSnapshot);
+  /** Gợi ý khi người dùng đang gõ nhịp / vừa khớp nhịp */
+  const [tapNote, setTapNote] = useState("");
+  const tapsRef = useRef<number[]>([]);
+
+  /** Điều khiển nhịp chỉ có nghĩa với NGUỒN NHÚNG (file nội bộ đã được phân tích phổ thật) */
+  const showBeatControls = isDesktop && mode === "simulated";
+
+  /** Chỉnh nhịp mô phỏng (bỏ canh pha cũ vì nhịp đã đổi) */
+  function nudgeBeat(delta: number): void {
+    setVisualizerBeat({ bpm: clampBpm(beat.bpm + delta), offsetMs: 0 });
+    tapsRef.current = [];
+    setTapNote("");
+  }
+
+  /**
+   * "Gõ nhịp": bấm theo nhịp bài hát vài lần -> suy ra BPM rồi canh pha để sóng đập đúng lúc.
+   *
+   * Đây là cách DUY NHẤT để sóng khớp nhạc với nguồn nhúng: âm thanh nằm trong `iframe` khác miền nên
+   * không thể phân tích phổ, còn tai người căn nhịp chính xác hơn mọi con số mặc định.
+   */
+  function handleTap(): void {
+    const now = performance.now();
+    const taps = pruneTaps([...tapsRef.current, now], now);
+
+    tapsRef.current = taps;
+
+    const result = tapTempo(taps);
+
+    if (!result) {
+      setTapNote(`Gõ theo nhịp bài hát… (${taps.length}/3)`);
+      return;
+    }
+
+    alignVisualizerBeatTo(usePlayerStore.getState().progress * 1000, result.bpm, result.intervalMs);
+    tapsRef.current = [];
+    setTapNote(`Đã khớp ${result.bpm} BPM`);
+  }
 
   /*
    * LƯỚI AN TOÀN: nếu vòng lặp JS không cho ra mức nào (mode vẫn `idle` dù nhạc đang chạy) thì để
@@ -187,12 +247,52 @@ export function NowPlayingVisualizer({ className }: { className?: string }) {
         className="mt-2 flex flex-wrap items-center justify-end gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground"
       >
         <span>{label}</span>
-        {motionBlocked ? (
-          <button
-            type="button"
-            onClick={() => setMotionOverride(true)}
-            className="rounded-full border border-border-strong px-2 py-0.5 text-[10px] normal-case tracking-normal text-foreground transition hover:border-primary/50 hover:text-primary"
+
+        {showBeatControls ? (
+          <span
+            data-slot="now-playing-visualizer-beat"
+            className="flex flex-wrap items-center gap-1 normal-case tracking-normal"
           >
+            <button type="button" onClick={() => nudgeBeat(-5)} title="Nhịp chậm hơn" className={CONTROL_CLASS}>
+              −
+            </button>
+            <span
+              className="tabular-nums"
+              title="Nhịp mô phỏng dùng cho nguồn nhúng (YouTube/SoundCloud/TikTok) — chỉnh hoặc bấm “Gõ nhịp” cho khớp nhạc"
+            >
+              {beat.bpm} BPM
+            </span>
+            <button type="button" onClick={() => nudgeBeat(5)} title="Nhịp nhanh hơn" className={CONTROL_CLASS}>
+              +
+            </button>
+            <button
+              type="button"
+              onClick={handleTap}
+              title="Bấm theo nhịp bài hát 3 lần để sóng đập đúng nhịp"
+              className={CONTROL_CLASS}
+            >
+              Gõ nhịp
+            </button>
+            {isDefaultVisualizerBeat() ? null : (
+              <button
+                type="button"
+                onClick={() => {
+                  resetVisualizerBeat();
+                  tapsRef.current = [];
+                  setTapNote("");
+                }}
+                title="Về nhịp mặc định (125 BPM)"
+                className={CONTROL_CLASS}
+              >
+                Mặc định
+              </button>
+            )}
+            {tapNote ? <span className="lowercase">{tapNote}</span> : null}
+          </span>
+        ) : null}
+
+        {motionBlocked ? (
+          <button type="button" onClick={() => setMotionOverride(true)} className={CONTROL_CLASS}>
             Bật hiệu ứng
           </button>
         ) : null}

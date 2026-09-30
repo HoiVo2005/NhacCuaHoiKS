@@ -15,14 +15,22 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import {
+  bpmToBeatMs,
+  clampBpm,
   levelToScale,
+  phaseOffsetFor,
+  pruneTaps,
   simulatedLevels,
   smoothLevels,
   spectrumLevels,
+  tapTempo,
   visualizerBars,
   VISUALIZER_ATTACK,
   VISUALIZER_BAR_COUNT,
   VISUALIZER_BEAT_MS,
+  VISUALIZER_DEFAULT_BPM,
+  VISUALIZER_MAX_BPM,
+  VISUALIZER_MIN_BPM,
   VISUALIZER_MIN_SCALE,
   VISUALIZER_RELEASE,
   VISUALIZER_REST_BASS,
@@ -205,6 +213,7 @@ const visualizerLib = read("src/lib/visualizer.ts");
 const hook = read("src/hooks/use-visualizer-levels.ts");
 const mediaQueryHook = read("src/hooks/use-media-query.ts");
 const audioBridge = read("src/components/player/audio-source.ts");
+const beatStore = read("src/components/player/visualizer-beat.ts");
 const playerEngine = read("src/components/player/player-engine.tsx");
 const css = read("src/app/globals.css");
 
@@ -326,7 +335,7 @@ check(
 );
 check(
   "Nhip mo phong canh lai theo vi tri bai hat khi nguoi dung tua",
-  hook.includes("SEEK_JUMP_SECONDS") && hook.includes("beatMs = (seconds * 1000) % VISUALIZER_BEAT_MS"),
+  hook.includes("SEEK_JUMP_SECONDS") && hook.includes("phaseMs = phaseFromSong(seconds * 1000"),
 );
 check(
   "Cau noi the <audio>: PlayerEngine dang ky, hook theo doi",
@@ -348,6 +357,95 @@ check(
   read("README.md").includes("captureStream") &&
     read("README.md").includes("Nhịp theo bài hát") &&
     read("README.md").includes("check:visualizer"),
+);
+
+/* ---------------- 9. Nhip: nguoi dung chinh / GO NHIP cho nguon nhung ---------------- */
+
+check(
+  "Nhip mac dinh 125 BPM = 480 ms (khop hang so cu)",
+  VISUALIZER_DEFAULT_BPM === 125 &&
+    Math.abs(bpmToBeatMs(VISUALIZER_DEFAULT_BPM) - VISUALIZER_BEAT_MS) < 1e-9,
+);
+check(
+  "Gioi han nhip 60..200 BPM (gia tri la -> nhip mac dinh)",
+  clampBpm(10) === VISUALIZER_MIN_BPM &&
+    clampBpm(999) === VISUALIZER_MAX_BPM &&
+    clampBpm(Number.NaN) === VISUALIZER_DEFAULT_BPM,
+);
+
+const steady = tapTempo([0, 500, 1_000, 1_500, 2_000]);
+check(
+  "GO NHIP: go deu 500 ms -> 120 BPM",
+  steady !== null && steady.bpm === 120 && steady.intervalMs === 500,
+  steady ? `${steady.bpm} BPM / ${steady.intervalMs} ms` : "null",
+);
+check(
+  "GO NHIP: chua du 3 lan go -> chua chot nhip (khong doan bua)",
+  tapTempo([]) === null && tapTempo([0]) === null && tapTempo([0, 500]) === null,
+);
+check(
+  "GO NHIP: bo qua go dup (<250 ms) va nghi qua lau (>2 s) -> van ra dung nhip",
+  (() => {
+    const messy = tapTempo([0, 510, 530, 1_010, 1_520, 6_000, 6_500]);
+
+    return messy !== null && messy.bpm >= 110 && messy.bpm <= 130;
+  })(),
+);
+check(
+  "GO NHIP: trung vi chiu duoc mot lan go lech",
+  (() => {
+    const result = tapTempo([0, 500, 1_000, 1_060, 1_500, 2_000]);
+
+    return result !== null && result.bpm === 120;
+  })(),
+);
+check(
+  "Bo cac lan go qua cu (khong tron nhip cu voi nhip moi)",
+  pruneTaps([0, 1_000, 4_500], 5_000).length === 2 && pruneTaps([0, 1_000, 4_500], 5_000)[0] === 1_000,
+);
+check(
+  "Canh pha: phach roi DUNG vi tri bai hat (songMs + offset chia het cho do dai phach)",
+  (() => {
+    const beatMs = bpmToBeatMs(120); // 500 ms
+    const offset = phaseOffsetFor(12_345, beatMs);
+
+    return Math.abs((12_345 + offset) % beatMs) < 1e-9;
+  })(),
+);
+check(
+  "Canh pha: gia tri bat thuong -> 0 (khong lam vo ham)",
+  phaseOffsetFor(Number.NaN, 500) === 0 && phaseOffsetFor(1_000, 0) === 0,
+);
+check(
+  "Giao dien: dieu khien nhip (BPM − / + , GO NHIP, ve mac dinh) CHI hien voi nguon nhung",
+  component.includes('data-slot="now-playing-visualizer-beat"') &&
+    component.includes("Gõ nhịp") &&
+    component.includes("nudgeBeat(-5)") &&
+    component.includes("nudgeBeat(5)") &&
+    component.includes("resetVisualizerBeat()") &&
+    component.includes('mode === "simulated"'),
+);
+check(
+  "Nhip duoc nho qua localStorage + doc bang `useSyncExternalStore`",
+  beatStore.includes('VISUALIZER_BEAT_STORAGE_KEY = "nhaccuahoiks-visualizer-beat"') &&
+    beatStore.includes("localStorage.setItem(VISUALIZER_BEAT_STORAGE_KEY") &&
+    beatStore.includes("alignVisualizerBeatTo") &&
+    component.includes("useSyncExternalStore(subscribeVisualizerBeat") &&
+    component.includes("getDefaultBeatSnapshot"),
+);
+check(
+  "Hook dung NHIP CUA NGUOI DUNG (BPM + canh pha) thay vi hang so cung",
+  hook.includes("visualizerBeat()") &&
+    hook.includes("bpmToBeatMs(beat.bpm)") &&
+    hook.includes("phaseMs = phaseFromSong(") &&
+    hook.includes("phaseMs = (phaseMs + delta) % beatPeriod") &&
+    !hook.includes("VISUALIZER_BEAT_MS"),
+);
+check(
+  "File noi bo: luon THU DANH THUC LAI bo doc pho khi bi treo (de dung duoc phan tich that)",
+  hook.includes("SPECTRUM_RESUME_RETRY_MS") &&
+    hook.includes("spectrum.resume()") &&
+    hook.includes("if (!spectrum) ensureSpectrum()"),
 );
 
 /* ---------------------------------- Ket qua ---------------------------------- */

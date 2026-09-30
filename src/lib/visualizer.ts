@@ -27,6 +27,17 @@ export const VISUALIZER_ANALYSER_FFT_SIZE = 256;
 /** Độ dài một "phách" khi mô phỏng (~125 BPM) — chỉ dùng cho nguồn không phân tích được âm thanh */
 export const VISUALIZER_BEAT_MS = 480;
 
+/** Nhịp mô phỏng mặc định (~125 BPM) và khoảng cho phép người dùng chỉnh */
+export const VISUALIZER_DEFAULT_BPM = 125;
+export const VISUALIZER_MIN_BPM = 60;
+export const VISUALIZER_MAX_BPM = 200;
+
+/** Khoảng cách hợp lệ giữa hai lần GÕ NHỊP (ms): nhỏ hơn = gõ đúp, lớn hơn = nghỉ giữa câu */
+export const VISUALIZER_TAP_MIN_INTERVAL_MS = 250;
+export const VISUALIZER_TAP_MAX_INTERVAL_MS = 2_000;
+/** Cần ít nhất bấy nhiêu khoảng cách hợp lệ mới chốt được nhịp */
+export const VISUALIZER_TAP_MIN_INTERVALS = 2;
+
 /** Cột vọt lên nhanh (attack) nhưng rơi xuống chậm (release) — giống equalizer thật */
 export const VISUALIZER_ATTACK = 0.55;
 export const VISUALIZER_RELEASE = 0.13;
@@ -182,5 +193,76 @@ export function levelToScale(level: number): number {
   if (!Number.isFinite(level)) return VISUALIZER_MIN_SCALE;
 
   return round(clamp(level, VISUALIZER_MIN_SCALE, 1), 3);
+}
+
+/* --------------------------- Nhịp cho nguồn nhúng (người dùng chỉnh/gõ) --------------------------- */
+
+/** Giới hạn nhịp trong khoảng cho phép (giá trị lạ -> nhịp mặc định) */
+export function clampBpm(bpm: number): number {
+  if (!Number.isFinite(bpm)) return VISUALIZER_DEFAULT_BPM;
+
+  return Math.round(clamp(bpm, VISUALIZER_MIN_BPM, VISUALIZER_MAX_BPM));
+}
+
+/** Nhịp (BPM) -> độ dài một phách (ms) */
+export function bpmToBeatMs(bpm: number): number {
+  return 60_000 / clampBpm(bpm);
+}
+
+export interface TapTempoResult {
+  /** Nhịp suy ra từ các lần gõ (đã làm tròn + giới hạn) */
+  bpm: number;
+  /** Khoảng cách TRUNG VỊ giữa hai lần gõ (ms) — trung vị để một lần gõ lệch không phá kết quả */
+  intervalMs: number;
+}
+
+/**
+ * Suy ra nhịp từ các mốc thời gian người dùng **gõ theo nhạc** (tai người căn nhịp chính xác hơn hẳn mô
+ * phỏng, mà nguồn nhúng thì không thể lấy phổ âm thanh).
+ *
+ * Bỏ những khoảng cách vô lý: < 250 ms (gõ đúp / rung tay) và > 2 s (nghỉ giữa câu). Cần ít nhất 2 khoảng
+ * hợp lệ mới chốt (tức là 3 lần gõ).
+ */
+export function tapTempo(taps: number[]): TapTempoResult | null {
+  if (taps.length < VISUALIZER_TAP_MIN_INTERVALS + 1) return null;
+
+  const intervals: number[] = [];
+
+  for (let index = 1; index < taps.length; index += 1) {
+    const gap = taps[index] - taps[index - 1];
+
+    if (gap >= VISUALIZER_TAP_MIN_INTERVAL_MS && gap <= VISUALIZER_TAP_MAX_INTERVAL_MS) {
+      intervals.push(gap);
+    }
+  }
+
+  if (intervals.length < VISUALIZER_TAP_MIN_INTERVALS) return null;
+
+  intervals.sort((left, right) => left - right);
+
+  const middle = Math.floor(intervals.length / 2);
+  const intervalMs =
+    intervals.length % 2 === 0
+      ? (intervals[middle - 1] + intervals[middle]) / 2
+      : intervals[middle];
+
+  return { bpm: clampBpm(60_000 / intervalMs), intervalMs };
+}
+
+/** Bỏ các lần gõ quá cũ (người dùng gõ rồi nghỉ) để không trộn nhịp cũ với nhịp mới */
+export function pruneTaps(taps: number[], now: number, maxAgeMs = 4_000): number[] {
+  return taps.filter((tap) => now - tap <= maxAgeMs);
+}
+
+/**
+ * Canh pha để phách rơi ĐÚNG vào nhịp bài hát.
+ *
+ * Mô phỏng tính pha bằng `(vị trí bài hát + offsetMs) % beatMs`, và xung mạnh nhất khi pha = 0. Vậy muốn
+ * có phách ở vị trí `songMs` của bài thì `offsetMs = (-songMs) mod beatMs`.
+ */
+export function phaseOffsetFor(songMs: number, beatMs: number): number {
+  if (!Number.isFinite(songMs) || !Number.isFinite(beatMs) || beatMs <= 0) return 0;
+
+  return ((-songMs % beatMs) + beatMs) % beatMs;
 }
 

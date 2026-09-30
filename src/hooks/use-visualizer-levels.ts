@@ -3,15 +3,16 @@
 import { useEffect, useState } from "react";
 
 import { audioElement, watchAudioElement } from "@/components/player/audio-source";
+import { visualizerBeat } from "@/components/player/visualizer-beat";
 import type { VisualizerMode } from "@/lib/visualizer";
 import {
+  bpmToBeatMs,
   simulatedLevels,
   smoothLevels,
   spectrumLevels,
   visualizerBars,
   VISUALIZER_ANALYSER_FFT_SIZE,
   VISUALIZER_BAR_COUNT,
-  VISUALIZER_BEAT_MS,
 } from "@/lib/visualizer";
 import { usePlayerStore } from "@/store/player-store";
 
@@ -32,6 +33,24 @@ const SILENT_FRAMES_LIMIT = 90;
 const SEEK_JUMP_SECONDS = 1.5;
 /** Bước nhảy khung hình lớn nhất (ms) để nhịp không "vọt" khi tab bị treo rồi quay lại */
 const MAX_FRAME_STEP_MS = 64;
+/**
+ * Cách nhau bấy nhiêu ms thì thử ĐÁNH THỨC LẠI bộ đọc phổ.
+ *
+ * `AudioContext` tạo trước khi người dùng bấm phát có thể ở trạng thái `suspended` (chính sách tự phát của
+ * trình duyệt) -> chưa đọc được phổ. Trong lúc chờ, cột vẫn chạy bằng nhịp mô phỏng và ta thử lại theo
+ * nhịp này (không gọi 60 lần mỗi giây).
+ */
+const SPECTRUM_RESUME_RETRY_MS = 700;
+
+/**
+ * Pha trong phách theo **vị trí bài hát** + canh pha người dùng đã chỉnh (0 = đúng lúc phách).
+ * Nhờ vậy khi người dùng tua bài, pha được gieo lại theo vị trí mới và nhịp không bị lệch.
+ */
+function phaseFromSong(songMs: number, offsetMs: number, periodMs: number): number {
+  if (!Number.isFinite(songMs) || !Number.isFinite(periodMs) || periodMs <= 0) return 0;
+
+  return ((((songMs + offsetMs) % periodMs) + periodMs) % periodMs);
+}
 
 /** Bộ đọc phổ âm thanh tuỳ chọn — chỉ dùng cho thẻ `<audio>` (file nội bộ) */
 interface SpectrumSource {
@@ -139,9 +158,13 @@ export function useVisualizerFrame({
     let spectrumElement: HTMLAudioElement | null = null;
     let allowSpectrum = true;
     let silentFrames = 0;
+    let lastResumeAt = 0;
 
-    /** Pha trong "phách" (ms): đếm bằng đồng hồ thật cho mượt 60fps, canh lại theo vị trí bài hát */
-    let beatMs = 0;
+    /** Pha trong "phách" (ms): đếm bằng đồng hồ thật cho mượt 60fps, gieo lại theo vị trí bài hát */
+    let phaseMs = 0;
+    /** Nhịp của khung hình trước — người dùng chỉnh/gõ nhịp thì gieo lại pha ngay */
+    let lastBeatPeriod = 0;
+    let lastBeatOffset = 0;
     let expectedSeconds = 0;
     let lastTimestamp = 0;
     let currentMode: VisualizerMode = "idle";
@@ -180,8 +203,14 @@ export function useVisualizerFrame({
 
       spectrum?.resume();
       lastTimestamp = 0; // tránh nhảy một bước lớn sau khi quay lại
+
+      const beat = visualizerBeat();
+      const beatPeriod = bpmToBeatMs(beat.bpm);
+
       expectedSeconds = usePlayerStore.getState().progress;
-      beatMs = (expectedSeconds * 1000) % VISUALIZER_BEAT_MS;
+      phaseMs = phaseFromSong(expectedSeconds * 1000, beat.offsetMs, beatPeriod);
+      lastBeatPeriod = beatPeriod;
+      lastBeatOffset = beat.offsetMs;
     };
 
     const unwatch = watchAudioElement(ensureSpectrum);
@@ -201,13 +230,26 @@ export function useVisualizerFrame({
       const state = usePlayerStore.getState();
       const seconds = Number.isFinite(state.progress) ? state.progress : 0;
 
-      // Người dùng tua -> canh lại pha của nhịp mô phỏng theo vị trí mới của bài
+      /*
+       * Nhịp (BPM + canh pha) do người dùng chỉnh / gõ — đọc mỗi khung hình, rất rẻ. Đổi nhịp giữa bài
+       * thì gieo lại pha để áp dụng ngay.
+       */
+      const beat = visualizerBeat();
+      const beatPeriod = bpmToBeatMs(beat.bpm);
+
+      if (beatPeriod !== lastBeatPeriod || beat.offsetMs !== lastBeatOffset) {
+        lastBeatPeriod = beatPeriod;
+        lastBeatOffset = beat.offsetMs;
+        phaseMs = phaseFromSong(seconds * 1000, beat.offsetMs, beatPeriod);
+      }
+
+      // Người dùng tua -> canh lại pha theo vị trí mới của bài
       if (Math.abs(seconds - expectedSeconds) > SEEK_JUMP_SECONDS) {
-        beatMs = (seconds * 1000) % VISUALIZER_BEAT_MS;
+        phaseMs = phaseFromSong(seconds * 1000, beat.offsetMs, beatPeriod);
       }
 
       expectedSeconds = seconds + delta / 1000;
-      beatMs = (beatMs + delta) % VISUALIZER_BEAT_MS;
+      phaseMs = (phaseMs + delta) % beatPeriod;
 
       if (!state.isPlaying) {
         levels = smoothLevels(levels, restLevels); // cột "ngồi xuống" mượt rồi đứng yên
@@ -216,8 +258,11 @@ export function useVisualizerFrame({
         return;
       }
 
-      if (allowSpectrum && spectrum && state.current?.sourceType === "UPLOADED") {
-        if (spectrum.read(bins)) {
+      if (allowSpectrum && state.current?.sourceType === "UPLOADED") {
+        // Bộ đọc phổ có thể chưa tạo được (thẻ <audio> chưa sẵn sàng) -> thử tạo ngay lúc đang phát
+        if (!spectrum) ensureSpectrum();
+
+        if (spectrum?.read(bins)) {
           let peak = 0;
           for (let index = 0; index < bins.length; index += 1) {
             if (bins[index] > peak) peak = bins[index];
@@ -234,10 +279,17 @@ export function useVisualizerFrame({
 
           // Im lặng bất thường (luồng bị chặn, âm thanh đi ra thiết bị khác...) -> thôi phân tích
           allowSpectrum = false;
+        } else if (spectrum && timestamp - lastResumeAt > SPECTRUM_RESUME_RETRY_MS) {
+          /*
+           * Bộ xử lý đang bị treo (AudioContext tạo trước khi người dùng bấm phát) -> thử đánh thức lại,
+           * có giãn cách để không gọi 60 lần mỗi giây. Chờ được thì cột vẫn chạy bằng nhịp mô phỏng.
+           */
+          lastResumeAt = timestamp;
+          spectrum.resume();
         }
       }
 
-      levels = smoothLevels(levels, simulatedLevels(beatMs / 1000, count));
+      levels = smoothLevels(levels, simulatedLevels(phaseMs / 1000, count));
       apply(levels);
       publishMode("simulated");
     });

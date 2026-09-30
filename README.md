@@ -210,11 +210,17 @@ Quy ước áp dụng:
     (`spectrumLevels`). **Không** dùng `createMediaElementSource` vì hàm đó **đổi đường phát** của thẻ (âm
     thanh bị đẩy qua Web Audio → mất khả năng nghe khi app ra nền trên iOS, xem `needsWebAudioGraph`);
     analyser cũng **không** nối vào loa nên không nghe hai lần. Safari chưa có `captureStream` → tự rơi về
-    nhịp mô phỏng, không báo lỗi.
+    nhịp mô phỏng, không báo lỗi; nếu bộ xử lý bị treo (AudioContext tạo trước khi bạn bấm phát) thì app
+    **tự thử đánh thức lại mỗi 0,7 giây** để dùng được phân tích thật.
   - **Nguồn nhúng (YouTube/SoundCloud/TikTok): nhịp mô phỏng** — âm thanh nằm trong `iframe` khác miền nên
-    **không thể** lấy phổ. `simulatedLevels()` dựng nhịp theo **vị trí bài hát** (phách ~125 BPM, xung mạnh
-    ở cột trầm) nên hình vẫn đổi theo bài và **thẳng lại đúng nhịp khi bạn tua** (hook canh lại pha khi thấy
-    vị trí lệch quá 1,5 giây).
+    **không thể** lấy phổ. `simulatedLevels()` dựng nhịp theo **vị trí bài hát** (xung mạnh ở cột trầm) nên
+    hình vẫn đổi theo bài và **thẳng lại đúng nhịp khi bạn tua** (hook canh lại pha khi thấy vị trí lệch quá
+    1,5 giây).
+  - **Nhịp cho nguồn nhúng do BẠN chỉnh hoặc GÕ**: ngay dưới dải sóng có `− 125 BPM +` và nút **“Gõ nhịp”**
+    — bấm theo nhịp bài hát **3 lần** là app suy ra BPM (trung vị các khoảng gõ, bỏ lần gõ đúp/nghỉ lâu) rồi
+    **canh pha** để phách rơi đúng nhịp; nút **“Mặc định”** trả về 125 BPM. Nhịp được nhớ trong
+    `localStorage` (khoá `nhaccuahoiks-visualizer-beat`). Đây là cách **duy nhất** làm sóng khớp nhạc với
+    nguồn nhúng vì không thể đọc phổ âm thanh trong `iframe` khác miền.
   - Dưới dải sóng có **nhãn trạng thái**: “Sóng theo nhạc” (đang phân tích thật) / “Nhịp theo bài hát”
     (nguồn nhúng) / “Nhạc đang tạm dừng” — để không ai tưởng hiệu ứng là giả.
   - **Cột lên nhanh, rơi chậm** (`smoothLevels`: attack 0.55 / release 0.13) và vẽ bằng `transform: scaleY`
