@@ -23,6 +23,7 @@ import { EMBED_MAX_VOLUME } from "@/lib/volume";
 import { usePlayerStore, type VideoMode } from "@/store/player-store";
 import type { SongDTO } from "@/types";
 
+import { registerAudioElement } from "./audio-source";
 import { AudioEngine } from "./engines/audio-engine";
 import { SoundCloudEngine } from "./engines/soundcloud-engine";
 import { TikTokEngine } from "./engines/tiktok-engine";
@@ -648,9 +649,23 @@ export function PlayerEngine() {
       unsubscribe();
     };
   }, [current?.id, isAuthenticated]);
+  /*
+   * Đăng ký thẻ `<audio>` cho hiệu ứng sóng nhạc (trình phát đầy đủ đọc phổ âm thanh THẬT của file nội bộ).
+   *
+   * `captureStream()` chỉ SAO CHÉP luồng ra, KHÔNG đổi đường phát như `createMediaElementSource` — nhờ vậy
+   * hiệu ứng không ảnh hưởng việc nghe nhạc khi app ra nền. Xem `src/components/player/audio-source.ts`.
+   */
+  useEffect(() => {
+    registerAudioElement(audioRef.current);
+
+    return () => registerAudioElement(null);
+  }, []);
+
+
 
   useEffect(() => {
     const engines = enginesRef.current;
+
     return () => {
       for (const engine of Object.values(engines)) {
         engine?.destroy();
