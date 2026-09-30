@@ -828,7 +828,8 @@ Lưu ý của gói miễn phí (đã tính sẵn trong thiết kế):
     chưa chạy nên không thể “vẽ nhanh hơn” từ phía Next.js. Muốn hết chờ phải làm dịch vụ không ngủ.
   - **Cách miễn phí (đã có sẵn trong repo):** workflow `.github/workflows/keep-warm.yml` ping
     `/api/health` mỗi 10 phút bằng GitHub Actions → dịch vụ không bao giờ ngủ (`npm run check:deploy`
-    canh file này không bị xoá/sửa hỏng). Cần bật Actions cho repo và
+    canh file này không bị xoá/sửa hỏng). Workflow **tự chạy ngay khi chính file đó được sửa** (kể cả
+    lần đầu) nên không phải đợi cron — xem kết quả ở tab _Actions_. Cần bật Actions cho repo và
     (tuỳ chọn) đặt biến `APP_URL` trong _Settings → Secrets and variables → Actions → Variables_ nếu dùng
     tên miền riêng; nếu không thì mặc định là `https://nhaccuahoiks.onrender.com`.
     Xem trước khi dùng: gói free chỉ có **750 giờ instance/tháng** (giữ 1 dịch vụ 24/7 tốn ~730 giờ) nên

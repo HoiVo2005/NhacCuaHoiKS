@@ -11,6 +11,8 @@
 #
 # Cach dung:
 #   1. Day file nay len nhanh `main` (autoDeploy cua render.yaml khong anh huong).
+#      Workflow TU CHAY ngay khi file nay duoc sua (trigger `push` ben duoi) de tu kiem chung;
+#      ngoai ra cu 10 phut mot lan theo `schedule`.
 #   2. Neu ten mien khac, vao GitHub -> Settings -> Secrets and variables ->
 #      Actions -> tab Variables -> tao bien APP_URL = https://ten-mien-cua-ban
 #      (khong can cung cap cung duoc: mac dinh o duoi la nhaccuahoiks.onrender.com).
@@ -31,6 +33,11 @@ name: keep-warm
 on:
   schedule:
     - cron: "*/10 * * * *"
+  # Chay ngay khi chinh file nay duoc sua -> tu kiem chung sau moi lan chinh sua,
+  # khong phai doi cron (GitHub co the tre 5-30 phut o lan chay theo lich dau tien).
+  push:
+    paths:
+      - ".github/workflows/keep-warm.yml"
   workflow_dispatch:
 
 permissions:

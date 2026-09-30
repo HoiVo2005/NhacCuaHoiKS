@@ -108,6 +108,8 @@ check(
   keepWarmWorkflow.includes("*/10 * * * *") &&
     keepWarmWorkflow.includes("workflow_dispatch") &&
     keepWarmWorkflow.includes("/api/health") &&
+    /* Sua file nay -> chay ngay mot lan de tu kiem chung (khong phai doi cron) */
+    keepWarmWorkflow.includes('".github/workflows/keep-warm.yml"') &&
     /* Ping truot chi canh bao, khong danh dau that bai -> tranh email loi moi 10 phut */
     keepWarmWorkflow.includes("::warning::") &&
     /* Tai lieu phai noi ro file nay de xoa/doi khi nang goi */
