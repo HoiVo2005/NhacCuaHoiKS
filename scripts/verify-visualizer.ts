@@ -213,12 +213,48 @@ check(
   component.includes('"relative hidden w-full select-none lg:block"'),
 );
 check(
-  "Chi CHAY tren desktop va tat khi nguoi dung bat 'giam chuyen dong'",
-  component.includes("enabled: isDesktop && !reduceMotion") &&
-    component.includes("useIsDesktop") &&
+  "Chi CHAY tren desktop va tat khi may bat 'giam chuyen dong' (mac dinh ton trong cai dat)",
+  component.includes("useIsDesktop") &&
     component.includes("usePrefersReducedMotion") &&
+    component.includes("const motionBlocked = reduceMotion && !forceMotion") &&
+    component.includes("const motionAllowed = isDesktop && !motionBlocked") &&
+    component.includes("enabled: motionAllowed") &&
     mediaQueryHook.includes('"(min-width: 1024px)"') &&
     mediaQueryHook.includes('"(prefers-reduced-motion: reduce)"'),
+);
+check(
+  "May bat 'giam chuyen dong' van co nut TU BAT hieu ung + nho lua chon",
+  component.includes("Bật hiệu ứng") &&
+    component.includes("setMotionOverride(true)") &&
+    component.includes("readMotionOverride") &&
+    component.includes('MOTION_STORAGE_KEY = "nhaccuahoiks-visualizer-motion"') &&
+    component.includes('localStorage.setItem(MOTION_STORAGE_KEY, "on")'),
+);
+check(
+  "Lua chon doc qua `useSyncExternalStore` (khong setState trong effect) + an toan SSR",
+  component.includes("useSyncExternalStore(") &&
+    component.includes("getMotionServerSnapshot") &&
+    /* Bo chu thich truoc khi kiem: tai lieu CO NHAC `useEffect` de giai thich vi sao khong dung */
+    !stripComments(component).includes("useEffect"),
+);
+check(
+  "Nhan noi RO ly do dung yen (khong de nguoi dung tuong tinh nang hong)",
+  component.includes("Máy đang bật “giảm chuyển động” — hiệu ứng tạm tắt"),
+);
+check(
+  "Nut bam nam NGOAI vung aria-hidden (khong vi pham tro nang)",
+  component.includes('<div aria-hidden="true" data-slot="now-playing-bars">') &&
+    component.includes('data-slot="now-playing-visualizer-status"') &&
+    component.indexOf('data-slot="now-playing-bars"') <
+      component.indexOf('data-slot="now-playing-visualizer-status"'),
+);
+check(
+  "LUOI AN TOAN: vong lap JS chua cho muc nao ma nhac dang chay -> van nhun bang keyframe equalize",
+  component.includes('const cssFallback = isPlaying && motionAllowed && mode === "idle"') &&
+    component.includes('cssFallback && "animate-equalize"') &&
+    component.includes('transform: cssFallback ? "none" :') &&
+    css.includes("@keyframes equalize") &&
+    css.includes("--animate-equalize: equalize"),
 );
 check(
   "Ve bang `transform: scaleY` + goc day cot (chay tren GPU, khong re-render React)",

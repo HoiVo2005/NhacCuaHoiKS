@@ -220,8 +220,12 @@ Quy ước áp dụng:
   - **Cột lên nhanh, rơi chậm** (`smoothLevels`: attack 0.55 / release 0.13) và vẽ bằng `transform: scaleY`
     ghi thẳng vào 56 phần tử qua `ref` — **không re-render React** mỗi khung hình.
   - **Tối ưu pin**: vòng lặp chỉ chạy khi hiệu ứng hiển thị (desktop) và nhạc đang phát; tab bị ẩn thì
-    không vẽ và **tạm dừng bộ đọc phổ**; bật **“giảm chuyển động”** (`prefers-reduced-motion`) thì tắt hẳn
-    hiệu ứng, cột đứng yên ở mức nghỉ.
+    không vẽ và **tạm dừng bộ đọc phổ**.
+  - **“Giảm chuyển động”** (`prefers-reduced-motion`): mặc định **không chạy** hiệu ứng (tôn trọng cài đặt
+    của máy) — nhưng nhãn dưới dải sóng **nói rõ lý do** và có nút **“Bật hiệu ứng”** cho ai vẫn muốn xem;
+    lựa chọn được nhớ trong `localStorage` (khoá `nhaccuahoiks-visualizer-motion`).
+  - **Lưới an toàn**: nếu vòng lặp JS không cho ra mức nào mà nhạc vẫn đang chạy, cột vẫn nhún bằng keyframe
+    `equalize` có sẵn (nhãn hiện “Sóng nhạc đang bắt nhịp…”) — dải sóng không bao giờ đứng chết.
   - Cấu hình cột sinh bằng hàm **thuần** `visualizerBars()` cùng các hàm tính khác (`src/lib/visualizer.ts`),
     **không dùng `Math.random()`**: máy chủ và trình duyệt phải vẽ ra y hệt nhau, nếu không sẽ **lệch
     hydration**.
