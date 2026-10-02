@@ -1,0 +1,43 @@
+// =============================================================================
+// Cloudflare Workers - cau hinh cho @opennextjs/cloudflare (OpenNext)
+// -----------------------------------------------------------------------------
+// File nay dung khi deploy NhacCuaHoiKS len Cloudflare Workers.
+// KHONG anh huong tới Render/Vercel (chi wrangler/opennext doc file nay).
+//
+// `id` cua Hyperdrive: chay `npx wrangler hyperdrive create nhaccuahoiks-db --connection-string="<CHUOI_NEON_POOLED>"` roi dan id tra ve vao duoi day.
+// =============================================================================
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": ".open-next/worker.js",
+  "name": "nhaccuahoiks",
+  // nodejs_compat: bat cac API Node (net/tls/stream...) ma `pg` + Prisma can.
+  //   Luu y: node:tty (Prisma runtime can) CHI co tu compatibility_date >= 2026-03-17
+  //   -> vi vay dat ngay duoi day (hoac them flag enable_nodejs_tty_module).
+  // global_fetch_strictly_public: OpenNext khuyen dung.
+  "compatibility_date": "2026-03-17",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public", "enable_nodejs_tty_module"],
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
+  },
+  // --- Ket noi Neon qua Hyperdrive (Cloudflare lam connection pooling + TCP ho) ---
+  // KHONG dat `localConnectionString` o day (tranh lo mat khau len git).
+  // Khi chay `npm run preview`, dat bien nay trong .dev.vars (da gitignore):
+  //   CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...neon.tech/neondb?sslmode=require
+  "hyperdrive": [
+    {
+      "binding": "HYPERDRIVE",
+      "id": "d4484bde21d8485ebb427127d89208a5"
+    }
+  ],
+  "vars": {
+    "NEXT_PUBLIC_APP_NAME": "NhacCuaHoiKS",
+    "STORAGE_DRIVER": "s3",
+    "STORAGE_PUBLIC_PREFIX": "/api/files",
+    "AUTH_TRUST_HOST": "true",
+    "AUTH_USE_SECURE_COOKIES": "true"
+  }
+}

@@ -12,12 +12,12 @@
 // =============================================================================
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 /// Nguoi dung he thong: ADMIN (quan tri) va EMPLOYEE (nhan vien)

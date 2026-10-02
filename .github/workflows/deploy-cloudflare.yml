@@ -1,0 +1,53 @@
+# =============================================================================
+# Deploy NhacCuaHoiKS len Cloudflare Workers bang GitHub Actions.
+# -----------------------------------------------------------------------------
+# Vi sao dung CI thay vi build tren Windows: OpenNext ho tro Windows kem -> build
+# tren runner ubuntu-latest on dinh hon.
+#
+# Can them trong GitHub > Settings > Secrets and variables > Actions:
+#   - CLOUDFLARE_API_TOKEN   (Cloudflare > My Profile > API Tokens > "Edit Cloudflare Workers")
+#   - CLOUDFLARE_ACCOUNT_ID
+#   - DIRECT_URL             (chuoi Neon TRUC TIEP - khong co "-pooler")
+#
+# Mac dinh chi chay TAY (workflow_dispatch). Muon tu dong moi lan push main thi
+# bo comment phan "push:" ben duoi.
+# =============================================================================
+name: Deploy to Cloudflare Workers
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Apply database migrations (Neon, duong TRUC TIEP)
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Build for Cloudflare (OpenNext)
+        run: npx opennextjs-cloudflare build
+        env:
+          # Du phong: `prisma generate` trong buoc build khong can ket noi that
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+
+      - name: Deploy
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy

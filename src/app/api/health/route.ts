@@ -23,8 +23,13 @@ function isConnectionError(error: unknown): boolean {
 }
 
 async function queryHealth() {
+  /*
+   * Ep kieu ::text: cac ham `current_database()`/`current_user` tra ve kieu Postgres `name`,
+   * kieu nay khong duoc Prisma engine deserialize truc tiep (loi
+   * "Failed to deserialize column of type 'name'"). Cast sang text la cach xu ly chuan.
+   */
   return prisma.$queryRaw<{ db: string; login_name: string }[]>`
-      SELECT current_database() AS db, current_user AS login_name
+      SELECT current_database()::text AS db, current_user::text AS login_name
     `;
 }
 

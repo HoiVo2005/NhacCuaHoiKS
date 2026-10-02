@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
@@ -60,12 +60,18 @@
     "check:youtube": "tsx scripts/verify-youtube-engine.ts",
     "check:playback": "tsx scripts/verify-playback-perf.ts",
     "verify": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1",
-    "demo:audio": "powershell -ExecutionPolicy Bypass -File scripts/generate-demo-audio.ps1"
+    "demo:audio": "powershell -ExecutionPolicy Bypass -File scripts/generate-demo-audio.ps1",
+    "deploy:cf": "powershell -ExecutionPolicy Bypass -File scripts/cloudflare-deploy.ps1",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1139.0",
-    "@prisma/adapter-pg": "^7.10.0",
-    "@prisma/client": "7.10.0",
+    "@opennextjs/cloudflare": "^1.20.7",
+    "@prisma/adapter-pg": "^6.19.3",
+    "@prisma/client": "6.19.3",
     "@radix-ui/react-alert-dialog": "^1.1.23",
     "@radix-ui/react-checkbox": "^1.3.11",
     "@radix-ui/react-dialog": "^1.1.23",
@@ -97,9 +103,10 @@
     "dotenv": "^18.0.3",
     "eslint": "^9.39.5",
     "eslint-config-next": "^16.3.6",
-    "prisma": "7.10.0",
+    "prisma": "6.19.3",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "wrangler": "^4.146.0"
   }
 }

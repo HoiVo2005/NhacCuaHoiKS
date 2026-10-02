@@ -1,6 +1,7 @@
+import NextAuth from "next-auth";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { auth } from "@/auth";
+import { authConfig } from "@/auth.config";
 import { createDeviceId, DEVICE_COOKIE, DEVICE_COOKIE_MAX_AGE, readCookie } from "@/lib/device";
 
 /** Cac trang ca nhan bat buoc dang nhap (khach chi xem duoc trang nghe nhac) */
@@ -97,6 +98,14 @@ function withDeviceCookie(request: NextRequest, response: NextResponse): NextRes
  * Chi cac trang ca nhan (/music/favorites, /music/history, /music/profile,
  * /music/playlists) va khu quan tri (/admin) moi bat buoc dang nhap.
  */
+/*
+ * Dung NextAuth(authConfig) - CHI doc session tu JWT, KHONG nap Prisma/pg vao bundle middleware.
+ * Tren Cloudflare Workers, viec middleware keo theo Prisma/pg gay loi
+ * "Promise.prototype.then called on incompatible receiver" -> 500 moi request (da gap that).
+ * authConfig KHONG import Prisma (xem ghi chu trong src/auth.config.ts).
+ */
+const { auth } = NextAuth(authConfig);
+
 export const proxy = auth((request) => {
   const { nextUrl } = request;
   const pathname = nextUrl.pathname;

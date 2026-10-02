@@ -1,4 +1,4 @@
-import type { Genre, Playlist, Song, User } from "@/generated/prisma/client";
+import type { Genre, Playlist, Song, User } from "@prisma/client";
 import { parseTags } from "@/lib/format";
 import { upgradeThumbnailUrl } from "@/lib/music/thumbnails";
 import type {

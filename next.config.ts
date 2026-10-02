@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Cac package chi chay tren server (driver PostgreSQL) khong bundle bang Turbopack
-  serverExternalPackages: ["pg", "@prisma/adapter-pg"],
+  // Cac package chi chay tren server (driver PostgreSQL / Prisma) khong bundle bang Turbopack.
+  // "@prisma/client" + ".prisma/client" la yeu cau cua @opennextjs/cloudflare (Workers/workerd).
+  serverExternalPackages: ["@prisma/client", ".prisma/client", "pg", "@prisma/adapter-pg"],
 
   // An hoan toan nut Dev Tools Indicator (chu "N") o goc man hinh khi chay next dev.
   // Loi compile/runtime van hien thi binh thuong.
@@ -47,3 +48,13 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
+
+/**
+ * @opennextjs/cloudflare: cho `next dev` doc duoc cac binding (Hyperdrive...) khi phat trien local.
+ * Chi chay o NODE_ENV=development de khong anh huong ban chay Node tren Render/Vercel/Docker.
+ */
+if (process.env.NODE_ENV === "development") {
+  void import("@opennextjs/cloudflare").then(({ initOpenNextCloudflareForDev }) => {
+    initOpenNextCloudflareForDev();
+  });
+}
