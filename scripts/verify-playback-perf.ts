@@ -102,6 +102,21 @@ function checkSources(): void {
       storage.includes("setTimeout(write, delayMs)") &&
       storage.includes("JSON.stringify(value)"),
   );
+  /* Thanh thoi gian bi giat sau khi nghe lau: truoc day `progress` luu vao localStorage nen
+   * moi giay persist lai JSON.stringify toan bo hang cho + ghi dong bo tren main thread. */
+  const partializeBlock = store.slice(store.indexOf("partialize:"));
+  check(
+    "Khong luu `progress` vao localStorage (khong phai ghi trang thai moi giay khi dang phat)",
+    partializeBlock.length > 0 && !partializeBlock.includes("progress"),
+  );
+  check(
+    "Storage so sanh truoc khi ghi -> bo qua khi noi dung khong doi (khong stringify queue moi tick)",
+    storage.includes("isSamePersistedValue") && storage.includes("lastWritten"),
+  );
+  check(
+    "Doc tu dia cung ghi nhan noi dung da luu (lan setItem dau khong ghi lai mot lan thua)",
+    storage.includes("lastWritten = { name, value: parsed }"),
+  );
   check(
     "Ghi not trang thai khi tab bi an / dong (khong mat bai dang nghe)",
     storage.includes('window.addEventListener("pagehide", write)') &&

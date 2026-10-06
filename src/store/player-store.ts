@@ -178,7 +178,6 @@ type PersistedPlayerState = Pick<
   | "currentIndex"
   | "current"
   | "queueLabel"
-  | "progress"
 >;
 
 export const usePlayerStore = create<PlayerState>()(
@@ -511,23 +510,32 @@ export const usePlayerStore = create<PlayerState>()(
     {
       name: "nhaccuahoiks-player",
       /*
-       * Ghi co tiet che xuong localStorage: khi dang phat, `progress` doi lien tuc (the <audio>
-       * ban `timeupdate` ~4 lan/giay) nen ghi ngay moi lan se lam main thread ban -> nhac giat.
-       * Xem `src/lib/throttled-storage.ts`.
+       * Ghi co tiet che xuong localStorage: khong luu `progress` (xem `partialize` ben duoi) va
+       * storage so sanh tung truong truoc khi ghi (`isSamePersistedValue`) -> dang phat, trang
+       * thai da luu khong doi nen khong con JSON.stringify hang cho + ghi dong bo moi giay tren
+       * main thread (truoc day dung chinh luc cap nhat thanh thoi gian -> thanh giat, nhac van
+       * chay binh thuong). Xem `src/lib/throttled-storage.ts`.
        */
       storage: createThrottledPersistStorage<PersistedPlayerState>(),
       /**
-       * Bản cũ có lưu khoá `resume` (vị trí đã nghe dở) trong localStorage; tính năng đó đã bị gỡ
-       * nên bỏ khoá này khi đọc lại để state không mang theo dữ liệu chết.
+       * Bản cũ có lưu khoá `resume` (vị trí đã nghe dở) và `progress` trong localStorage; tính
+       * năng nghe tiếp đã bị gỡ nên bỏ cả hai khi đọc lại để state không mang dữ liệu chết
+       * (thanh thời gian không còn hiện vị trí cũ rồi nhảy về 0:00 khi phát).
        */
       merge: (persisted, current) => {
         const rest = { ...(persisted as Partial<PlayerState> & { resume?: unknown }) };
         delete rest.resume;
+        delete rest.progress;
         return { ...current, ...rest };
       },
       /*
        * Không lưu hẹn giờ tắt nhạc: mở lại trang sau vài tiếng mà vẫn còn đếm ngược cũ thì
        * vô nghĩa (nhạc đã dừng khi đóng tab), lại dễ làm người dùng tưởng trình phát lỗi.
+       *
+       * Không lưu `progress` (vị trí giây đang phát): mỗi giây giá trị lại đổi nên `persist`
+       * phải ghi lại toàn bộ trạng thái (kèm hàng chờ) mỗi giây trên main thread -> giao diện
+       * giật. Tính năng "nghe tiếp từ chỗ dừng" đã bị gỡ, mỗi bài luôn phát từ 0:00 nên lưu
+       * vị trí cũ cũng vô ích.
        */
       partialize: (state) => ({
         volume: state.volume,
@@ -538,7 +546,6 @@ export const usePlayerStore = create<PlayerState>()(
         currentIndex: state.currentIndex,
         current: state.current,
         queueLabel: state.queueLabel,
-        progress: state.progress,
       }),
     },
   ),

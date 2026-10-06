@@ -9,6 +9,32 @@ import type { PlayerAdapterCallbacks, PlayerEngine } from "./types";
 const GRAPH_RESUME_DELAY_MS = 200;
 /** Gian cach giua hai lan thu danh thuc (trinh duyet co the ban statechange lien tuc) */
 const GRAPH_RESUME_COOLDOWN_MS = 5_000;
+/**
+ * Toi da cho `resume()` trong `play()` truoc khi dung meo chua treo (ms).
+ *
+ * `AudioContext.resume()` binh thuong xong toi da vai chuc ms; neu qua thoi gian nay chua xong
+ * thi co the dang bi loi treo vinh vien (WebKit bug 281566) -> dung meo `suspend()` + `resume()`.
+ */
+const GRAPH_RESUME_TIMEOUT_MS = 400;
+
+/**
+ * Cho promise xong trong `timeoutMs`; qua han (hoac loi) tra `false`.
+ *
+ * Dung cho `AudioContext.resume()` - loi WebKit 281566 la `resume()` KHONG BAO GIO xong khi
+ * trinh duyet vua bi treo xuong nen. Neu `await` thang ma khong co gioi han thi lenh phat phia sau
+ * khong bao gio chay ("bam Phat khong co tac dung"). Promise qua han bi bo qua sau do, khong anh huong gi.
+ */
+function settleWithin(promise: Promise<unknown>, timeoutMs: number): Promise<boolean> {
+  return Promise.race([
+    promise.then(
+      () => true,
+      () => false,
+    ),
+    new Promise<boolean>((resolve) => {
+      window.setTimeout(() => resolve(false), timeoutMs);
+    }),
+  ]);
+}
 
 interface AudioGraph {
   context: AudioContext;
@@ -229,9 +255,7 @@ export class AudioEngine implements PlayerEngine {
 
     // Do thi khuech dai (neu can) phai tao trong hanh dong nguoi dung de duoc phep phat
     this.ensureGraph();
-    if (this.graph && this.graph.context.state === "suspended") {
-      await this.graph.context.resume().catch(() => undefined);
-    }
+    await this.resumeGraphForPlay();
 
     try {
       await this.audio.play();
@@ -337,6 +361,31 @@ export class AudioEngine implements PlayerEngine {
     if (!context || context.state !== "suspended") return;
 
     void context.resume().catch(() => undefined);
+  }
+
+  /**
+   * Danh thuc do thi am thanh TRUOC khi phat - nhung KHONG de `resume()` treo chan lenh phat.
+   *
+   * WebKit bug 281566: `resume()` co the KHONG BAO GIO xong khi trinh duyet vua bi treo xuong nen
+   * (dung luc nguoi dung mo lai app va bam Phat). Luc truoc `await` thang o day, nen neu treo thi
+   * `audio.play()` phia sau khong bao gio chay -> bam Phat khong co tac dung ("thoat app ra la
+   * khong mo duoc nua"). Nay cho co gioi han (`GRAPH_RESUME_TIMEOUT_MS`); qua han thi dung meo
+   * trong chinh bug do: `suspend()` truoc roi `resume()` sau `GRAPH_RESUME_DELAY_MS` (giong
+   * `watchGraphResume`). Van khong danh thuc duoc thi van tiep tuc phat - bo xu ly se duoc danh
+   * thuc boi su kien `statechange` khi quay lai tien canh.
+   */
+  private async resumeGraphForPlay(): Promise<void> {
+    const context = this.graph?.context;
+    if (!context || context.state !== "suspended") return;
+
+    if (await settleWithin(context.resume(), GRAPH_RESUME_TIMEOUT_MS)) return;
+
+    // Treo that -> meo chua loi WebKit 281566: suspend() truoc, resume() sau 200ms
+    void context.suspend().catch(() => undefined);
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, GRAPH_RESUME_DELAY_MS);
+    });
+    await settleWithin(context.resume(), GRAPH_RESUME_TIMEOUT_MS);
   }
 
   private applyVolume(): void {

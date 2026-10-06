@@ -1106,6 +1106,14 @@ luôn ấm:
   dừng nên mỗi lần play/pause/chuyển bài/tua đều gửi thêm một request 0ms; nay chỉ gửi khi bài đã phát
   ≥ 5 giây, khi tiến thêm ≥ 30 giây, khi tạm dừng hoặc khi nghe hết — và mỗi lúc chỉ một request đang bay.
   Nhờ vậy thao tác chọn bài không còn bị xếp sau một hàng request ghi lịch sử (`npm run check:history`).
+- **Thanh thời gian không còn giật khi nghe lâu**: `progress` (vị trí giây đang phát) trước đây cũng nằm
+  trong `partialize` của `persist`, mà mỗi giây giá trị lại đổi nên mỗi giây storage phải `JSON.stringify`
+  **toàn bộ** trạng thái đã lưu (kèm hàng chờ) rồi ghi đồng bộ xuống `localStorage` ngay trên main thread —
+  đúng lúc giao diện cập nhật nhãn thời gian, thành ra thanh thời gian “giật” (nhạc vẫn phát bình thường vì
+  âm thanh chạy trên thread riêng); nghe càng lâu thì chuỗi JSON mỗi giây càng tạo áp lực GC. Nay `progress`
+  không còn được lưu (tính năng “nghe tiếp từ chỗ dừng” đã gỡ, mỗi bài luôn phát từ 0:00) và
+  `createThrottledPersistStorage` **so sánh từng trường trước khi ghi** — nội dung không đổi thì bỏ qua
+  hoàn toàn, đang phát không còn ghi `localStorage` nữa (`npm run check:playback`).
 - Đo lại bằng `npm run bench` (cần server đang chạy) để xem thời gian từng trang.
 
 ### Bố cục trên điện thoại (tránh tràn ngang)
