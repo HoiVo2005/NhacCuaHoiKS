@@ -1,0 +1,16 @@
+# Vercel: không upload cac thu muc build/nặng lên (Vercel tu build lai)
+.open-next/
+.next/
+.wrangler/
+.data/
+node_modules/
+tsconfig.tsbuildinfo
+prisma/seed.ts
+Dockerfile
+docker-compose.yml
+wrangler.jsonc
+open-next.config.ts
+scripts/cloudflare-deploy.ps1
+.github/
+HUONG-DAN-DEPLOY-CLOUDFLARE.md
+public/_headers

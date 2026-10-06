@@ -62,6 +62,7 @@
     "verify": "powershell -ExecutionPolicy Bypass -File scripts/verify.ps1",
     "demo:audio": "powershell -ExecutionPolicy Bypass -File scripts/generate-demo-audio.ps1",
     "deploy:cf": "powershell -ExecutionPolicy Bypass -File scripts/cloudflare-deploy.ps1",
+    "deploy:vercel": "powershell -ExecutionPolicy Bypass -File scripts/vercel-deploy.ps1",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
@@ -107,6 +108,7 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
+    "vercel": "^62.1.0",
     "wrangler": "^4.146.0"
   }
 }
