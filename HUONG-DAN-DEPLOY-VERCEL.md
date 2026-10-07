@@ -62,7 +62,10 @@ Dán đúng các biến dưới đây (Production + Preview):
 
 1. **Giới hạn 4.5 MB mỗi request.** API `/api/upload` nhận file qua `request.formData()` nên
    file nhạc lớn (mặc định `UPLOAD_MAX_BYTES=50MB`) sẽ **bị Vercel chặn** trước cả khi app kịp xử lý.
-   - Cách A (nhanh, cho demo): đặt `UPLOAD_MAX_BYTES=4194304` (4 MB) và chỉ up file nhỏ.
+   - Cách A (nhanh, cho demo): đặt `UPLOAD_MAX_BYTES=10485760` (10 MB — script `scripts/vercel-deploy.ps1`
+     đã đặt sẵn) để **app** cho phép file tới 10 MB. **Nhưng gói Vercel vẫn chặn request > ~4.5 MB**
+     nên file 4.5–10 MB bị Vercel từ chối trước (lỗi 413, khác với lỗi báo của app) — thực tế chỉ
+     upload được file ≤ 4.5 MB. Muốn lên 10 MB thật sự → Cách B hoặc Cách C.
    - Cách B (đúng chuẩn): upload trực tiếp lên S3/R2 bằng **presigned URL** — cần sửa code ở
      `src/app/api/upload/route.ts` + `src/components/admin/add-music-form.tsx`.
    - Cách C: nếu bắt buộc up file lớn → dùng nền tảng chạy **Docker/container** (xem mục 5).

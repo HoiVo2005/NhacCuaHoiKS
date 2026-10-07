@@ -31,7 +31,8 @@ $vars = [ordered]@{
   "STORAGE_DRIVER"         = "local"
   "STORAGE_LOCAL_DIR"      = ".data/uploads"
   "STORAGE_PUBLIC_PREFIX"  = "/api/files"
-  "UPLOAD_MAX_BYTES"       = "4194304"
+  # 10 MB theo yeu cau - NHUNG Vercel van chan request > ~4.5 MB truoc khi app chay (xem HUONG-DAN-DEPLOY-VERCEL.md)
+  "UPLOAD_MAX_BYTES"       = "10485760"
   "METADATA_TIMEOUT_MS"    = "8000"
 }
 
