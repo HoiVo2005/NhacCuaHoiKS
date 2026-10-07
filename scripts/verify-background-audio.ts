@@ -24,7 +24,9 @@ import {
 import {
   INTERRUPTION_PAUSE_GRACE_MS,
   isSystemPause,
+  KEEP_ALIVE_KICK_MS,
   RESUME_RETRY_DELAY_MS,
+  shouldKeepAlivePlayback,
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
@@ -114,7 +116,36 @@ check(
   !shouldRetryResumePlayback({ ...notResumed, audioSessionInterrupted: true }),
 );
 
-/* ------------- 2c. Khong de Web Audio giet nhac khi ra nen (nguyen nhan chinh) ------------- */
+/* ------------- 2c. O nen: "day" lenh phat lai cho nguon nhung (TikTok tu tam dung khi trang bi an) ------------- */
+
+/** Dang nghe, trang o nen, he thong binh thuong, nguon nhung -> moi duoc day lenh phat */
+const keepAlive = {
+  wantsPlaying: true,
+  documentHidden: true,
+  audioSessionInterrupted: false,
+  embedSource: true,
+};
+
+check("Chu ky day lenh phat lai khi o nen la 3 giay", KEEP_ALIVE_KICK_MS === 3_000);
+check("O nen + van dang nghe + nguon nhung -> day lenh phat lai", shouldKeepAlivePlayback(keepAlive));
+check(
+  "O nen + nguon nhung NHUNG nguoi dung da tam dung -> khong day",
+  !shouldKeepAlivePlayback({ ...keepAlive, wantsPlaying: false }),
+);
+check(
+  "Trang dang o tien canh -> khong day (tung dong co tu quan ly)",
+  !shouldKeepAlivePlayback({ ...keepAlive, documentHidden: false }),
+);
+check(
+  "He thong dang ngat quang (cuoc goi / app khac dang phat) -> khong day",
+  !shouldKeepAlivePlayback({ ...keepAlive, audioSessionInterrupted: true }),
+);
+check(
+  "Nguon UPLOADED (the <audio>) -> khong day (tranh loi tu dong phat bi chan thanh bao loi)",
+  !shouldKeepAlivePlayback({ ...keepAlive, embedSource: false }),
+);
+
+/* ------------- 2d. Khong de Web Audio giet nhac khi ra nen (nguyen nhan chinh) ------------- */
 
 check(
   "Muc <= 100%: KHONG dung Web Audio (iOS coi Web Audio la am thanh nen -> chan khi ra ngoai)",
@@ -223,6 +254,8 @@ check(
 const engineSource = source("src/components/player/player-engine.tsx");
 const audioEngineSource = source("src/components/player/engines/audio-engine.ts");
 const youtubeSource = source("src/components/player/engines/youtube-engine.ts");
+const tiktokSource = source("src/components/player/engines/tiktok-engine.ts");
+const backgroundLibSource = source("src/lib/background-playback.ts");
 const readmeSource = source("README.md");
 
 check(
@@ -263,6 +296,24 @@ check(
     engineSource.includes("RESUME_RETRY_DELAY_MS"),
 );
 check(
+  "O nen: tu day lenh phat lai cho nguon nhung (TikTok tu tam dung luc trang bi an)",
+  backgroundLibSource.includes("export function shouldKeepAlivePlayback") &&
+    engineSource.includes("shouldKeepAlivePlayback({") &&
+    engineSource.includes("KEEP_ALIVE_KICK_MS") &&
+    engineSource.includes("startKeepAlive") &&
+    engineSource.includes("stopKeepAlive"),
+);
+check(
+  "Chi day cho nguon nhung - nguon UPLOADED (the <audio>) khong bi day",
+  engineSource.includes("EMBED_SOURCE_TYPES.has(song.sourceType)"),
+);
+check(
+  "TikTok: tra loi reportsPlaying (truoc nay thieu -> khong duoc thu phat lai khi quay lai tien canh)",
+  tiktokSource.includes("reportsPlaying(): boolean") &&
+    tiktokSource.includes("this.lastState === 1") &&
+    tiktokSource.includes("this.lastState = -1"),
+);
+check(
   "The <audio> khong bi dat `display: none` (Chromium coi do la \"khong duoc ve\" -> co the tam dung am thanh)",
   !engineSource.includes('className="hidden"') &&
     engineSource.includes("pointer-events-none fixed bottom-0 left-0 size-[1px] opacity-0"),
@@ -288,7 +339,8 @@ check(
     readmeSource.includes("quay lại tiền cảnh") &&
     readmeSource.includes("Nghe nhạc khi chuyển sang tab") &&
     readmeSource.includes("ambient") &&
-    readmeSource.includes("needsWebAudioGraph"),
+    readmeSource.includes("needsWebAudioGraph") &&
+    readmeSource.includes("KEEP_ALIVE_KICK_MS"),
 );
 
 /* --------------------------------- Ket qua --------------------------------- */

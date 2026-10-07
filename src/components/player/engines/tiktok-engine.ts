@@ -37,6 +37,11 @@ export class TikTokEngine implements PlayerEngine {
   private durationSeconds = 0;
   private lastVolume = DEFAULT_VOLUME;
   private muted = false;
+  /**
+   * Trang thai gan nhat nhan duoc tu player qua `onStateChange`
+   * (-1: init/chua nap bai, 0: het, 1: dang phat, 2: tam dung, 3: dang tai)
+   */
+  private lastState = -1;
 
   constructor(container: HTMLElement, callbacks: PlayerAdapterCallbacks) {
     this.container = container;
@@ -75,6 +80,7 @@ export class TikTokEngine implements PlayerEngine {
         break;
       case "onStateChange": {
         const state = Number(data.value);
+        this.lastState = state;
         if (state === 1) {
           this.callbacks.onPlay?.();
           this.callbacks.onBuffering?.(false);
@@ -145,6 +151,8 @@ export class TikTokEngine implements PlayerEngine {
 
     this.callbacks.onBuffering?.(true);
     this.durationSeconds = 0;
+    // Bai moi -> chua bai nao phat -> khong duoc bao "dang phat" cho den khi player xac nhan
+    this.lastState = -1;
 
     if (!this.listener) {
       this.listener = this.handleMessage;
@@ -168,6 +176,17 @@ export class TikTokEngine implements PlayerEngine {
 
   async pause(): Promise<void> {
     this.post("pause");
+  }
+
+  /**
+   * Trinh phat dang THAT SU phat? (state 1 = playing)
+   *
+   * Dung khi quay lai tien canh: TikTok co the da tu tam dung luc trang o nen ma khong ai bao, va lenh
+   * `play()` dau tien sau khi danh thuc rat de bi bo qua -> lu cho phep `shouldRetryResumePlayback`
+   * goi phat lai mot lan nua (truoc day TikTok thieu cai nay nen khong duoc thu lai).
+   */
+  reportsPlaying(): boolean {
+    return this.lastState === 1;
   }
 
   seek(seconds: number): void {

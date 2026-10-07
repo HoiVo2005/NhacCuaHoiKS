@@ -306,6 +306,12 @@ Quy ước áp dụng:
   - **Quay lại tiền cảnh là tự phát tiếp — và thử lại lần hai nếu cần**: nếu sau 1,2 giây động cơ vẫn báo
     **chưa phát** (`PlayerEngine.reportsPlaying` + `shouldRetryResumePlayback`) thì app gọi phát lại lần
     nữa, vì lệnh phát đầu tiên rất dễ bị bỏ qua ngay khi app vừa được đánh thức.
+  - **Nguồn nhúng TikTok tự tạm dừng khi trang bị ẩn** (code trong `iframe` của TikTok phản ứng riêng với
+    `visibilitychange`, khác YouTube/SoundCloud vẫn chạy tiếp) — nên khi đang ở nền trình phát **gửi lệnh
+    “phát” lại mỗi 3 giây** cho nguồn nhúng (`shouldKeepAlivePlayback` + `KEEP_ALIVE_KICK_MS`,
+    `src/lib/background-playback.ts`) để nhạc TikTok không bị tắt giữa chừng; TikTok cũng trả lời
+    `reportsPlaying` nên quay lại app được ưu tiên **thử phát lần hai**. Nguồn `<audio>` không bị “đạp”
+    như vậy, vì lệnh phát bị trình duyệt chặn sẽ thành báo lỗi và tắt luôn ý định nghe.
   - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang
     ngắt quãng (cuộc gọi đang tới, ứng dụng khác đang phát).
   - Luật nằm ở `src/lib/background-playback.ts` — kiểm chứng bằng `npm run check:background`.
@@ -923,6 +929,41 @@ npm run db:generate
 npm run build
 NODE_ENV=production npm start
 ```
+
+---
+
+### 9.3. Cài đặt trên điện thoại Android (file APK)
+
+App là web app có máy chủ nên APK là **Trusted Web Activity (TWA)** bọc URL đã deploy
+(mặc định `https://nhaccuahoiks.onrender.com`): hiện icon trên launcher, chạy fullscreen như app
+thật, và **phát nhạc nền / khóa màn hình hoạt động giống Chrome** (TWA dùng Chrome làm engine).
+
+- APK build sẵn: copy `NhacCuaHoiKS.apk` (thư mục gốc repo) vào điện thoại → mở tệp →
+  cho phép cài từ nguồn không xác định → Cài đặt.
+- Build lại khi app đổi:
+
+```bash
+# Lan dau (cai 1 lan): Bubblewrap CLI + Android SDK
+npm i -g @bubblewrap/cli
+powershell -File scripts\setup-android-sdk.ps1
+
+# Tao project Android + build APK
+powershell -File scripts\build-apk.ps1 -Command init
+powershell -File scripts\build-apk.ps1 -Command build
+# -> %LOCALAPPDATA%\NhacCuaHoiKS\twa\app-release-signed.apk
+```
+
+Lưu ý:
+
+- Keystore `%LOCALAPPDATA%\NhacCuaHoiKS\twa\android.keystore` (mật khẩu `nhaccuahoiks2026`) là
+  **chìa khóa upgrade app** — mất là không update được bản đã cài trên máy; hãy backup.
+- Project bắt buộc build trong thư mục **ASCII-only** (Java `keytool` hỏng với path tiếng Việt).
+- Lần đầu mở app có thể chờ Render "wake" ~1 phút (free tier); apk kí bằng keystore local nên
+  Android sẽ hỏi "không rõ nguồn gốc" — đó là bình thường.
+
+---
+
+## 10. Kiểm thử & kiểm tra chất lượng
 
 ---
 

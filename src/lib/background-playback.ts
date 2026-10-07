@@ -95,3 +95,42 @@ export function shouldRetryResumePlayback(input: {
     !input.actuallyPlaying
   );
 }
+
+/**
+ * Chu kỳ "đạp lệnh phát lại" trong lúc trang đang Ở NỀN (ms).
+ *
+ * Nguồn nhúng YouTube/SoundCloud tự chạy tiếp khi trang bị ẩn, nhưng player TikTok thì
+ * **tự tạm dừng ngay khi trang bị ẩn** (code bên trong `iframe` của TikTok phản ứng riêng với
+ * `visibilitychange` - hành vi cố ý chống nghe nền của họ). Vì vậy khi đang ở nền phải gửi lại
+ * lệnh `play` sau mỗi nhịp này, lặp lại vì lệnh đầu tiên có thể đến trước lúc TikTok kịp tự dừng
+ * (hoặc bị trình duyệt gộp/throttle lúc tab nền).
+ */
+export const KEEP_ALIVE_KICK_MS = 3_000;
+
+/**
+ * Có nên gửi lệnh "phát lại" cho động cơ khi trang đang Ở NỀN không?
+ *
+ * Phải đúng CẢ BỐN:
+ *  - `wantsPlaying`: store vẫn ở trạng thái phát (người dùng chưa bấm tạm dừng cả từ giao diện
+ *    lẫn màn hình khoá / nút tai nghe);
+ *  - `documentHidden`: chỉ làm khi trang thật sự bị ẩn - ở tiền cảnh để từng động cơ tự quản lý
+ *    (gõ `play` trong lúc foreground chỉ là lệnh thừa);
+ *  - không đang bị hệ thống ngắt quãng (cuộc gọi tới / app khác chiếm quyền phát): trong lúc này
+ *    lệnh phát sẽ bị từ chối hoặc tệ hơn là giành lại quyền phát giữa chừng;
+ *  - `embedSource`: chỉ "đạp" cho nguồn nhúng (YouTube/SoundCloud/TikTok). Nguồn `<audio>`
+ *    (`UPLOADED`) KHÔNG đạp: nếu trình duyệt chặn autoplay khi đang ở nền thì `AudioEngine.play()`
+ *    báo `onError` -> hiện thông báo lỗi và TẮT luôn ý định nghe - đúng cái mình muốn tránh.
+ */
+export function shouldKeepAlivePlayback(input: {
+  wantsPlaying: boolean;
+  documentHidden: boolean;
+  audioSessionInterrupted: boolean;
+  embedSource: boolean;
+}): boolean {
+  return (
+    input.embedSource &&
+    input.wantsPlaying &&
+    input.documentHidden &&
+    !input.audioSessionInterrupted
+  );
+}

@@ -14,7 +14,9 @@ import {
 } from "@/lib/audio-session";
 import {
   isSystemPause,
+  KEEP_ALIVE_KICK_MS,
   RESUME_RETRY_DELAY_MS,
+  shouldKeepAlivePlayback,
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
@@ -72,6 +74,19 @@ function activeVideoContainer(
  * `full`: khung video nam o goc trang (position: fixed) va duoc dat vi tri theo "o cho video"
  * trong trinh phat day du (xem `video-stage.ts`) -> cuon len/xuong cung noi dung thay vi dung yen.
  */
+/**
+ * Các nguồn nhúng (player nằm trong `iframe` của nền tảng thứ ba).
+ *
+ * Dùng cho luật "đạp lệnh phát lại khi ở nền" (`shouldKeepAlivePlayback`): TikTok TỰ tạm dừng khi
+ * trang bị ẩn nên cần đạp, YouTube/SoundCloud đạp vào cũng chỉ là lệnh thừa không hại gì.
+ * Nguồn `UPLOADED` (thẻ `<audio>`) không nằm trong đây - xem lý do trong `shouldKeepAlivePlayback`.
+ */
+const EMBED_SOURCE_TYPES = new Set<SongDTO["sourceType"]>([
+  "YOUTUBE",
+  "SOUNDCLOUD",
+  "TIKTOK",
+]);
+
 function containerClass(mode: VideoMode, active: boolean): string {
   if (!active || mode === "hidden") {
     return "pointer-events-none fixed bottom-0 left-0 z-0 size-[1px] opacity-0";
@@ -316,10 +331,56 @@ export function PlayerEngine() {
    *     thẻ <audio> có thể đã bị tạm dừng mà không tự chạy lại.
    *  4. Sau khi quay lại, nếu động cơ XÁC NHẬN nó vẫn chưa phát thì thử phát lại một lần nữa - lệnh phát
    *     đầu tiên rất dễ bị bỏ qua ngay khi app vừa được hệ thống đánh thức (`shouldRetryResumePlayback`).
+   *  5. Trong lúc ĐANG ở nền, cứ mỗi `KEEP_ALIVE_KICK_MS` gửi lại lệnh phát cho nguồn nhúng - riêng
+   *     player TikTok tự tạm dừng ngay khi trang bị ẩn (YouTube/SoundCloud thì không), không "đạp" là
+   *     nhạc tắt hẳn (`shouldKeepAlivePlayback`).
    */
   useEffect(() => {
     /** Cac hen gio kiem tra lai sau khi quay lai tien canh (don sach khi unmount) */
     const retryTimers: number[] = [];
+
+    /** Hen goi lai lenh phat khi trang dang o nen (TikTok tu tam dung - xem `shouldKeepAlivePlayback`) */
+    let keepAliveTimer: number | null = null;
+
+    const stopKeepAlive = (): void => {
+      if (keepAliveTimer === null) return;
+      window.clearInterval(keepAliveTimer);
+      keepAliveTimer = null;
+    };
+
+    /*
+     * Moi lan trang bi an la BAT DAU mot vong day: chi gui lenh khi store van muon nghe, trang that su
+     * o nen va he thong khong dang ngat quang; nguon UPLOADED (the <audio>) khong day (xem ly do trong
+     * `shouldKeepAlivePlayback`). Doc store TRONG tick (khong dong ngoai) de neu nguoi dung bam tam dung
+     * tu man hinh khoa/luc trang dang an thi lan tiep theo tu ngung.
+     */
+    const keepAliveTick = (): void => {
+      const state = usePlayerStore.getState();
+      const song = state.current;
+      if (!song) return;
+
+      if (
+        !shouldKeepAlivePlayback({
+          wantsPlaying: state.isPlaying,
+          documentHidden: document.visibilityState === "hidden",
+          audioSessionInterrupted: isAudioSessionInterrupted(currentAudioSessionHost()),
+          embedSource: EMBED_SOURCE_TYPES.has(song.sourceType),
+        })
+      ) {
+        return;
+      }
+
+      const engine = enginesRef.current[song.sourceType];
+      if (!engine) return;
+
+      void engine.play();
+    };
+
+    const startKeepAlive = (): void => {
+      if (keepAliveTimer !== null) return;
+      keepAliveTimer = window.setInterval(keepAliveTick, KEEP_ALIVE_KICK_MS);
+    };
+
 
     /** Phát tiếp nếu người dùng vẫn đang nghe mà phiên phát bị hệ thống tạm dừng */
     const resumeIfNeeded = (): void => {
@@ -371,9 +432,14 @@ export function PlayerEngine() {
       // Đặt lại loại phiên âm thanh ngay (lúc trang bị ẩn, trình duyệt thường xoá thiết lập này)
       reapplyBackgroundAudioSession();
 
-      if (document.visibilityState === "hidden") return;
+      if (document.visibilityState === "hidden") {
+        // Bat dau day lenh phat lai (neu dang phat); tick se tu bo qua khi khong can
+        startKeepAlive();
+        return;
+      }
 
       visibleAtRef.current = Date.now();
+      stopKeepAlive();
       resumeIfNeeded();
     };
 
@@ -381,6 +447,7 @@ export function PlayerEngine() {
     const onPageShow = (): void => {
       reapplyBackgroundAudioSession();
       visibleAtRef.current = Date.now();
+      stopKeepAlive();
       resumeIfNeeded();
     };
 
@@ -393,6 +460,7 @@ export function PlayerEngine() {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pageshow", onPageShow);
       unwatchAudioSession?.();
+      stopKeepAlive();
 
       for (const timer of retryTimers) window.clearTimeout(timer);
     };
