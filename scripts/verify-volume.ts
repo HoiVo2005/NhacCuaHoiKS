@@ -4,6 +4,7 @@ import path from "node:path";
 import { AudioEngine } from "../src/components/player/engines/audio-engine";
 import { TikTokEngine } from "../src/components/player/engines/tiktok-engine";
 import { ratioFromPointer, volumeFromRatio } from "../src/components/player/vertical-volume-slider";
+import { EQ_BAND_COUNT } from "../src/lib/sound-profiles";
 import {
   canBoostVolume,
   clampVolume,
@@ -74,6 +75,8 @@ const stats = {
   sources: 0,
   gains: [] as number[],
   created: 0,
+  /** Cac not EQ da tao - kiem tra so not co dinh + gia tri dB khi bat/tat tinh hieu */
+  biquads: [] as FakeBiquad[],
   suspended: 0,
   resumed: 0,
 };
@@ -97,6 +100,18 @@ class FakeLimiter {
 class FakeSource {
   connect(): void {
     // noi vao gain
+  }
+}
+
+/** Not EQ gia lap (BiquadFilterNode) - chuoi6 not truoc gain, xem sound-profiles.ts */
+class FakeBiquad {
+  type = "peaking";
+  frequency = { value: 0 };
+  gain = { value: 0 };
+  Q = { value: 1 };
+
+  connect(): void {
+    // noi sang not tiep theo (audio -> eq -> gain)
   }
 }
 
@@ -129,6 +144,12 @@ class FakeAudioContext {
 
   createDynamicsCompressor(): FakeLimiter {
     return new FakeLimiter();
+  }
+
+  createBiquadFilter(): FakeBiquad {
+    const node = new FakeBiquad();
+    stats.biquads.push(node);
+    return node;
   }
 
   resume(): Promise<void> {
@@ -371,6 +392,45 @@ async function main(): Promise<void> {
     afterBoostEngine.usesWebAudio,
     `created=${stats.created} gain=${stats.gains[stats.gains.length - 1]}`,
   );
+  // --- Tinh hieu am thanh (EQ preset) - xem src/lib/sound-profiles.ts ---
+  const eqAudio = new FakeAudio();
+  const eqEngine = makeEngine(eqAudio);
+  const createdBeforeEq = stats.created;
+  const biquadsBefore = stats.biquads.length;
+
+  eqEngine.setVolume(0.5);
+  check(
+    "EQ mac dinh TAT: duoi 100% van khong tao do thi Web Audio",
+    stats.created === createdBeforeEq && !eqEngine.usesWebAudio,
+    `created=${stats.created}`,
+  );
+
+  eqEngine.setSoundProfile("jbl-partybox");
+  check(
+    "Bat EQ: tao do thi NGAY tai muc duoi 100% (truoc day chi khi khuech dai > 100%)",
+    stats.created === createdBeforeEq + 1 && eqEngine.usesWebAudio,
+    `created=${stats.created}`,
+  );
+  check(
+    "Do thi EQ: dung so not CO DINH EQ_BAND_COUNT truoc gain",
+    stats.biquads.length - biquadsBefore === EQ_BAND_COUNT,
+    `${stats.biquads.length - biquadsBefore}/${EQ_BAND_COUNT}`,
+  );
+  check(
+    "Dang bat JBL: cac not nhan tham so EQ (khong con toan 0 dB)",
+    stats.biquads.slice(-EQ_BAND_COUNT).some((node) => node.gain.value !== 0),
+    stats.biquads.slice(-EQ_BAND_COUNT).map((node) => node.gain.value).join(","),
+  );
+
+  eqEngine.setSoundProfile("off");
+  check(
+    "Tat EQ: GIU do thi, moi not ve 0 dB (pass-through - khong go duoc do thi)",
+    stats.created === createdBeforeEq + 1 &&
+      eqEngine.usesWebAudio &&
+      stats.biquads.slice(-EQ_BAND_COUNT).every((node) => node.gain.value === 0),
+    stats.biquads.slice(-EQ_BAND_COUNT).map((node) => node.gain.value).join(","),
+  );
+
   const seekAudio = new FakeAudio();
   const seekReports: number[] = [];
   const seekEngine = new AudioEngine(seekAudio as unknown as HTMLAudioElement, {

@@ -39,6 +39,7 @@
     "check:duration": "tsx scripts/verify-duration.ts",
     "check:dialogs": "tsx scripts/verify-dialogs.ts",
     "check:volume": "tsx scripts/verify-volume.ts",
+  "check:sound": "tsx scripts/verify-sound-profiles.ts",
     "check:seek": "tsx scripts/verify-seek.ts",
     "check:sleep": "tsx scripts/verify-sleep-timer.ts",
     "check:video": "tsx scripts/verify-video-stage.ts",

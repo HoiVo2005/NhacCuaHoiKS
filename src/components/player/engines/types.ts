@@ -1,3 +1,4 @@
+import type { SoundProfileId } from "@/lib/sound-profiles";
 import type { SongDTO } from "@/types";
 
 export interface PlayerAdapterCallbacks {
@@ -23,6 +24,13 @@ export interface PlayerEngine {
   seek(seconds: number): void;
   setVolume(volume: number): void;
   setMuted(muted: boolean): void;
+  /**
+   * Ap dung tinh hieu am thanh (EQ preset) cho file tai len (xem `src/lib/sound-profiles.ts`).
+   *
+   * Khong bat buoc: dong co nhung (YouTube/SoundCloud/TikTok) am thanh nam trong iframe khac mien
+   * khong qua Web Audio duoc -> bo qua (chi dong co the <audio> thuc hien).
+   */
+  setSoundProfile?: (profile: SoundProfileId) => void;
   destroy(): void;
   /**
    * Trinh phat dang THAT SU phat? (khong khai bao = khong biet)

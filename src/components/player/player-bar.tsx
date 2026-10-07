@@ -22,6 +22,7 @@ import {
 
 import { MixButton } from "@/components/player/mix-button";
 import { SleepTimerButton } from "@/components/player/sleep-timer-button";
+import { SoundProfileChips, SoundProfileMenu } from "@/components/player/sound-profile-menu";
 import { VerticalVolumeSlider } from "@/components/player/vertical-volume-slider";
 import { RangeInput } from "@/components/player/range-input";
 import { FavoriteButton } from "@/components/music/favorite-button";
@@ -239,6 +240,8 @@ export function PlayerBar() {
             ) : null}
             {/* Hẹn giờ tắt nhạc: đếm ngược theo phút hoặc “hết bài này thì tắt” */}
             <SleepTimerButton />
+            {/* Tông âm thanh (EQ): mô phỏng chữ ký loa JBL cho file tải lên */}
+            <SoundProfileMenu />
             {/* Mix quanh bài đang phát: tạo hàng chờ mới gồm các bài tương đồng */}
             <MixButton />
             {/* Lời bài hát: bảng lời nằm trong trình phát đầy đủ nên mở luôn trình phát đó */}
@@ -395,6 +398,9 @@ export function PlayerBar() {
                 >
                   Tối đa
                 </Button>
+
+                {/* Tông nhạc (EQ): chọn nhanh ngay trong panel âm lượng */}
+                <SoundProfileChips />
               </div>
             </div>
           </Dropdown>

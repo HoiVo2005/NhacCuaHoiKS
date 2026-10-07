@@ -1,6 +1,14 @@
 import type { SongDTO } from "@/types";
 import { reapplyBackgroundAudioSession } from "@/lib/audio-session";
 import { clampSeekTarget } from "@/lib/seek";
+import {
+  DEFAULT_SOUND_PROFILE,
+  EQ_BAND_COUNT,
+  eqBandsFor,
+  isEqActive,
+  isSoundProfileId,
+  type SoundProfileId,
+} from "@/lib/sound-profiles";
 import { EMBED_MAX_VOLUME, MAX_VOLUME, needsWebAudioGraph } from "@/lib/volume";
 
 import type { PlayerAdapterCallbacks, PlayerEngine } from "./types";
@@ -38,6 +46,8 @@ function settleWithin(promise: Promise<unknown>, timeoutMs: number): Promise<boo
 
 interface AudioGraph {
   context: AudioContext;
+  /** Chuoi EQ co dinh truoc gain - xem `src/lib/sound-profiles.ts` (tat EQ = moi not 0 dB) */
+  eq: BiquadFilterNode[];
   gain: GainNode;
 }
 
@@ -84,8 +94,9 @@ function watchGraphResume(context: AudioContext, audio: HTMLMediaElement): void 
 }
 
 /**
- * Tao do thi am thanh: <audio> -> gain -> limiter -> loa.
+ * Tao do thi am thanh: <audio> -> eq -> gain -> limiter -> loa.
  * Gain > 1 cho phep am thanh LON HON ban goc (the <audio> thuong bi gioi han 100%).
+ * EQ (chuoi BiquadFilter truoc gain) dung de ap dung tinh hieu am thanh - xem `sound-profiles.ts`.
  * Limiter (DynamicsCompressor) giup bot vo tieng khi khuech dai qua cao.
  */
 function createAudioGraph(audio: HTMLAudioElement): AudioGraph | null {
@@ -110,14 +121,26 @@ function createAudioGraph(audio: HTMLAudioElement): AudioGraph | null {
     limiter.attack.value = 0.003;
     limiter.release.value = 0.25;
 
-    source.connect(gain);
+    /*
+     * Chuoi EQ: so not CO DINH truoc gain. Do thi tao MOT lan va dung lai cho moi preset nen
+     * khong duoc doi so not - chi ghi lai tham so; khi tat EQ moi not de 0 dB (pass-through).
+     */
+    const eq = Array.from({ length: EQ_BAND_COUNT }, () => context.createBiquadFilter());
+
+    let node: AudioNode = source;
+    for (const band of eq) {
+      node.connect(band);
+      node = band;
+    }
+
+    node.connect(gain);
     gain.connect(limiter);
     limiter.connect(context.destination);
 
     // Bo xu ly co the bi treo khi app ra nen -> tu danh thuc lai (xem `watchGraphResume`)
     watchGraphResume(context, audio);
 
-    const graph: AudioGraph = { context, gain };
+    const graph: AudioGraph = { context, eq, gain };
     audioGraphs.set(audio, graph);
     return graph;
   } catch {
@@ -135,6 +158,8 @@ export class AudioEngine implements PlayerEngine {
   private lastReportedSecond = -1;
   private graph: AudioGraph | null = null;
   private volume = 1;
+  /** Tinh hieu am thanh (EQ preset) hien tai - xem `src/lib/sound-profiles.ts` */
+  private soundProfile: SoundProfileId = DEFAULT_SOUND_PROFILE;
   /** Trinh duyet bo qua `audio.volume` (iOS Safari) -> muc duoi 100% do he thong quan ly */
   private elementVolumeIgnored = false;
 
@@ -300,12 +325,28 @@ export class AudioEngine implements PlayerEngine {
     this.applyVolume();
   }
 
+  /**
+   * Ap dung tinh hieu am thanh (EQ preset) cho file tai len - xem `src/lib/sound-profiles.ts`.
+   *
+   * Bat preset = tao do thi Web Audio neu chua co (cung nhu khi khuech dai > 100%) roi ghi tham so
+   * vao chuoi BiquadFilter; tat preset ("off") de moi not ve 0 dB (pass-through) - do thi da tao thi
+   * khong go duoc nen giu nguyen (am thanh di qua not 0 dB khong bi doi).
+   */
+  setSoundProfile(profile: SoundProfileId): void {
+    this.soundProfile = isSoundProfileId(profile) ? profile : DEFAULT_SOUND_PROFILE;
+
+    this.ensureGraph();
+    this.applySoundProfile();
+    this.resumeGraphIfSuspended();
+    this.applyVolume();
+  }
+
   /** Trinh phat dang THAT SU phat? (dung khi quay lai tien canh - xem `PlayerEngine.reportsPlaying`) */
   reportsPlaying(): boolean {
     return this.audio.paused === false;
   }
 
-  /** Do thi Web Audio dang duoc dung? (chi xay ra khi nguoi dung chon tren 100%) */
+  /** Do thi Web Audio dang duoc dung? (chi xay ra khi nguoi dung chon khuech dai > 100% hoac bat EQ) */
   get usesWebAudio(): boolean {
     return Boolean(this.graph);
   }
@@ -321,7 +362,9 @@ export class AudioEngine implements PlayerEngine {
   }
 
   /**
-   * Do thi am thanh CHI duoc tao khi nguoi dung muon TO HON ban goc (> 100%) - xem `needsWebAudioGraph`.
+   * Do thi am thanh CHI duoc tao khi nguoi dung CHON khuech dai > 100% (xem `needsWebAudioGraph`)
+   * HOAC khi nguoi dung bat tinh hieu EQ (`sound-profiles`) - ca hai deu la su chon co tinh:
+   * mac dinh am luong 80% + EQ "off" khong tao do thi nen hanh vi nghe nen cu giuyen 100%.
    *
    * LICH SU LOI "dang nghe ma chuyen sang ung dung khac la mat nhac": truoc day, khi thay trinh duyet
    * bo qua `audio.volume` (iOS Safari), trinh phat TU DONG tao do thi Web Audio de giam am luong. Do
@@ -339,11 +382,14 @@ export class AudioEngine implements PlayerEngine {
     const existing = audioGraphs.get(this.audio);
     if (existing) {
       this.graph = existing;
+      // Do thi dung chung giua cac lan phat -> ghi lai tinh hieu cua engine hien tai
+      this.applySoundProfile();
       this.resumeGraphIfSuspended();
       return;
     }
 
-    if (!needsWebAudioGraph(this.volume)) return;
+    // Khong khuech dai va khong bat EQ -> khong tao do thi (giu kha nang nghe khi ra nen)
+    if (!needsWebAudioGraph(this.volume) && !isEqActive(this.soundProfile)) return;
 
     this.graph = createAudioGraph(this.audio);
     if (!this.graph) {
@@ -352,6 +398,7 @@ export class AudioEngine implements PlayerEngine {
       return;
     }
 
+    this.applySoundProfile();
     this.resumeGraphIfSuspended();
   }
 
@@ -386,6 +433,25 @@ export class AudioEngine implements PlayerEngine {
       window.setTimeout(resolve, GRAPH_RESUME_DELAY_MS);
     });
     await settleWithin(context.resume(), GRAPH_RESUME_TIMEOUT_MS);
+  }
+
+  /**
+   * Ghi cac dian EQ hien tai vao chuoi BiquadFilter (preset "off" = tat ca 0 dB / pass-through).
+   * Khong lam gi khi do thi chua tao (van dung truc tiep the <audio>, khong Web Audio).
+   */
+  private applySoundProfile(): void {
+    const nodes = this.graph?.eq;
+    if (!nodes) return;
+
+    const bands = eqBandsFor(this.soundProfile);
+    for (let index = 0; index < nodes.length; index += 1) {
+      const node = nodes[index];
+      const band = bands[index];
+      node.type = band.type;
+      node.frequency.value = band.frequency;
+      node.gain.value = band.gainDb;
+      node.Q.value = band.q ?? 1;
+    }
   }
 
   private applyVolume(): void {

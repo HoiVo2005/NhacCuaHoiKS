@@ -380,6 +380,20 @@ Quy ước áp dụng:
   - **SoundCloud**: mức âm lượng người dùng chọn được ghi nhớ và áp dụng lại cho widget mới (đổi bài
     không làm mất âm lượng), bật tiếng lại trả về **đúng mức đã chọn** thay vì một mức cố định.
   - Kiểm chứng bằng `npm run check:volume` và `npm run check:soundcloud`.
+- **Tông âm thanh (EQ) — mô phỏng loa JBL PartyBox Ultimate**: nút hình **sóng âm** trên thanh phát và
+  trình phát đầy đủ mở menu chọn tông cho **file tải lên**: **Gốc (không EQ)** (mặc định) hoặc
+  **JBL PartyBox Ultimate** — trầm sâu `lowshelf 90 Hz +5 dB`, gỡ vẩn trung-trầm `260 Hz −1.5 dB`,
+  presence `3.2 kHz +1.5 dB`, treble sáng `11 kHz +3 dB` (4 dải nằm trong chuỗi **6 nốt BiquadFilter cố
+  định** đặt trước GainNode — đồ thị Web Audio chỉ tạo được một lần mỗi thẻ `<audio>` nên số nốt chốt từ
+  đầu; tắt EQ mọi nốt về `0 dB` pass-through chứ không tháo nốt). Trên điện thoại: chọn nhanh bằng
+  **chip Gốc / JBL** ngay trong panel âm lượng.
+  - **Chỉ file tải lên**: nguồn nhúng (YouTube/SoundCloud/TikTok) nằm trong iframe khác miền nên không
+    qua Web Audio được — menu ghi rõ điều này.
+  - **Mặc định “Gốc”**: không tạo Web Audio khi âm lượng ≤ 100% → **hành vi nghe nền giữ nguyên 100%**.
+    Bật EQ thì iPhone/iPad có thể mất nhạc nền khi ra nền (WebKit bug 198277 — đúng lỗi từng sửa ở
+    `needsWebAudioGraph`), app **báo rõ một lần** khi bạn bật; Android/TWA (file APK) phát nền bình thường.
+  - Trạng thái lưu cùng âm lượng trong `localStorage`, giá trị hỏng được lọc về `"off"` khi khôi phục.
+  - Kiểm chứng bằng `npm run check:sound` (và các ca EQ trong `npm run check:volume`).
 - **Thanh thời gian (tua bài)**: thả chuột/ngón tay ở đâu cũng được ghi nhận — kể cả khi thả ra ngoài
   thanh trượt hoặc trình duyệt huỷ thao tác (`pointercancel`); phím `←` `→` / `Home` / `End` cũng tua
   được. Vị trí tua luôn được giới hạn trong `[0, thời lượng]`. Ngay sau khi tua, hệ thống **bỏ qua các
@@ -991,7 +1005,8 @@ npm run check:autoplay  # Test tu dong phat bai ke tiep khi chuyen bai / het bai
 npm run check:soundcloud  # Test dong co SoundCloud (thoi gian chay, thoi luong, su kien)
 npm run check:duration  # Test lay dung thoi luong (YouTube/SoundCloud) va tu sua so sai
 npm run check:dialogs  # Test hop thoai xac nhan (thu vien) + tick chon xoa hang loat
-npm run check:volume  # Test am luong 0-200% va khuech dai lon hon ban goc
+npm run check:volume  # Test am luong 0-200% va khuech dai lon hon ban goc + ca EQ (tao do thi khi bat/tat tinh hieu)
+npm run check:sound   # Test tinh hieu am thanh (preset JBL PartyBox cho file tai len, chuoi 6 not Biquad, luu/persist)
 npm run check:seek    # Test thanh thoi gian: keo-tha, khong nhay nguoc, gioi han vi tri tua
 npm run check:sleep   # Test hen gio tat nhac (dem nguoc theo phut + tat sau N bai, khong luu khi tai lai)
 npm run check:video   # Test video toan man hinh cuon theo noi dung (khong dung yen, khong de len header)

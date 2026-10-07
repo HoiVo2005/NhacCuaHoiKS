@@ -23,6 +23,7 @@ import { LyricsPanel } from "@/components/player/lyrics-panel";
 import { MixButton } from "@/components/player/mix-button";
 import { NowPlayingVisualizer } from "@/components/player/now-playing-visualizer";
 import { RangeInput } from "@/components/player/range-input";
+import { SoundProfileMenu } from "@/components/player/sound-profile-menu";
 import { registerVideoSlot } from "@/components/player/video-stage";
 import { Artwork } from "@/components/ui/artwork";
 import { Badge } from "@/components/ui/badge";
@@ -279,6 +280,8 @@ export function FullPlayer() {
               Phát tiếp theo
             </Button>
             <MixButton variant="labeled" />
+            {/* Tông âm thanh (EQ): mô phỏng chữ ký loa JBL cho file tải lên */}
+            <SoundProfileMenu />
             {current.sourceType !== "UPLOADED" ? (
               <Button
                 variant="outline"

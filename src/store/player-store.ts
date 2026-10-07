@@ -11,6 +11,7 @@ import {
   SLEEP_TIMER_MIN_TRACKS,
   type SleepMode,
 } from "@/lib/sleep-timer";
+import { DEFAULT_SOUND_PROFILE, isSoundProfileId, type SoundProfileId } from "@/lib/sound-profiles";
 import { createThrottledPersistStorage } from "@/lib/throttled-storage";
 import { clampVolume, DEFAULT_VOLUME } from "@/lib/volume";
 import type { SongDTO } from "@/types";
@@ -27,6 +28,11 @@ interface PlayerState {
   isBuffering: boolean;
   volume: number;
   muted: boolean;
+  /**
+   * Tông âm thanh (EQ preset) cho file tải lên — `"off"` (mặc định) = nghe đúng bản gốc,
+   * `"jbl-partybox"` = mô phỏng chữ ký loa JBL PartyBox Ultimate (xem `src/lib/sound-profiles.ts`).
+   */
+  soundProfile: SoundProfileId;
   progress: number;
   duration: number;
   /** Vi tri dang cho dong co xac nhan sau khi nguoi dung tua (null = khong cho) */
@@ -71,6 +77,8 @@ interface PlayerState {
   setDuration: (seconds: number) => void;
   setBuffering: (buffering: boolean) => void;
   setVolume: (volume: number) => void;
+  /** Chọn tông âm thanh (EQ preset) cho file tải lên */
+  setSoundProfile: (profile: SoundProfileId) => void;
   toggleMute: () => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
@@ -172,6 +180,7 @@ type PersistedPlayerState = Pick<
   PlayerState,
   | "volume"
   | "muted"
+  | "soundProfile"
   | "shuffle"
   | "repeat"
   | "queue"
@@ -191,6 +200,7 @@ export const usePlayerStore = create<PlayerState>()(
       isBuffering: false,
       volume: DEFAULT_VOLUME,
       muted: false,
+      soundProfile: DEFAULT_SOUND_PROFILE,
       progress: 0,
       duration: 0,
       pendingSeek: null,
@@ -418,6 +428,12 @@ export const usePlayerStore = create<PlayerState>()(
       setBuffering: (buffering) => set({ isBuffering: buffering }),
 
       setVolume: (volume) => set({ volume: clampVolume(volume), muted: false }),
+      /*
+       * Chọn tông nhạc (EQ): giá trị hỏng từ localStorage bản cũ / lưu tay -> quy về "off"
+       * (mặc định, không EQ) thay vì để chuỗi lạ chạy vào đồ thị âm thanh.
+       */
+      setSoundProfile: (profile) =>
+        set({ soundProfile: isSoundProfileId(profile) ? profile : DEFAULT_SOUND_PROFILE }),
       toggleMute: () => set((state) => ({ muted: !state.muted })),
       toggleShuffle: () => set((state) => ({ shuffle: !state.shuffle })),
 
@@ -526,6 +542,8 @@ export const usePlayerStore = create<PlayerState>()(
         const rest = { ...(persisted as Partial<PlayerState> & { resume?: unknown }) };
         delete rest.resume;
         delete rest.progress;
+        // Dữ liệu EQ hỏng từ bản cũ / lưu tay -> quy về "off" (mặc định, không đổi hành vi)
+        if (!isSoundProfileId(rest.soundProfile)) rest.soundProfile = DEFAULT_SOUND_PROFILE;
         return { ...current, ...rest };
       },
       /*
@@ -540,6 +558,7 @@ export const usePlayerStore = create<PlayerState>()(
       partialize: (state) => ({
         volume: state.volume,
         muted: state.muted,
+        soundProfile: state.soundProfile,
         shuffle: state.shuffle,
         repeat: state.repeat,
         queue: state.queue,

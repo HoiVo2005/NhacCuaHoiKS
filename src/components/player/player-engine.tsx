@@ -20,6 +20,7 @@ import {
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
+import { isEqActive } from "@/lib/sound-profiles";
 import { cn } from "@/lib/utils";
 import { EMBED_MAX_VOLUME } from "@/lib/volume";
 import { usePlayerStore, type VideoMode } from "@/store/player-store";
@@ -126,11 +127,14 @@ export function PlayerEngine() {
 
   /** Da noi cho nguoi dung biet am luong do he thong quan ly chua (chi noi MOT lan moi phien) */
   const volumeNoticeShownRef = useRef(false);
+  /** Da canh bao chuc nang EQ co the mat nhac khi ra nen tren iOS chua (chi noi MOT lan) */
+  const eqNoticeShownRef = useRef(false);
 
   const current = usePlayerStore((state) => state.current);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const volume = usePlayerStore((state) => state.volume);
   const muted = usePlayerStore((state) => state.muted);
+  const soundProfile = usePlayerStore((state) => state.soundProfile);
   const videoMode = usePlayerStore((state) => state.videoMode);
   const seekRequest = usePlayerStore((state) => state.seekRequest);
 
@@ -541,6 +545,8 @@ export function PlayerEngine() {
 
     engine.setVolume(volume);
     engine.setMuted(muted);
+    // Tông nhạc (EQ): chỉ đồng co file tai len co setSoundProfile - dong co nhung (iframe) bo qua
+    engine.setSoundProfile?.(soundProfile);
 
     /*
      * iOS/iPad: trình duyệt bỏ qua việc đặt `audio.volume`, mà trình phát cố ý KHÔNG dùng Web Audio
@@ -560,8 +566,27 @@ export function PlayerEngine() {
         duration: 8_000,
       });
     }
-     
-  }, [volume, muted, current?.id]);
+
+    /*
+     * Đang bật EQ trên iPhone/iPad: đồ thị Web Audio bị hệ thống chặn khi app ra nền (cùng nguyên
+     * nhân lỗi "nghe nhạc chuyển app khác là mất nhạc") — báo một lần mỗi phiên. Nguồn nhúng không
+     * qua Web Audio (không có setSoundProfile) thì EQ không áp dụng, khỏi cảnh báo thừa.
+     */
+    if (
+      !eqNoticeShownRef.current &&
+      isEqActive(soundProfile) &&
+      engine.setSoundProfile &&
+      engine.volumeNeedsSystemControl
+    ) {
+      eqNoticeShownRef.current = true;
+      toast.info("EQ đang bật — iPhone/iPad có thể mất nhạc nền", {
+        description:
+          "iOS chặn Web Audio khi app ra nền. Tắt tông nhạc trong menu nếu muốn nhạc tiếp tục khi chuyển app; Android (APK) phát nền bình thường.",
+        duration: 8_000,
+      });
+    }
+
+  }, [volume, muted, soundProfile, current?.id]);
 
   // Thuc hien lenh tua do store phat ra (keo thanh thoi gian, nut "Bai truoc" khi da nghe
   // qua 5 giay, ...). Store la nguon su that nen moi yeu cau tua deu di qua day.
