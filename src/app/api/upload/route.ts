@@ -3,7 +3,7 @@ import path from "node:path";
 
 import type { NextRequest } from "next/server";
 
-import { badRequest, handleApi, created, tooManyRequests } from "@/lib/api/response";
+import { badRequest, handleApi, created, serverError, tooManyRequests } from "@/lib/api/response";
 import { requireApiAdmin } from "@/lib/auth/guards";
 import { rateLimit } from "@/lib/rate-limit";
 import { UPLOAD_ACCEPTED_TYPES } from "@/lib/constants";
@@ -59,15 +59,27 @@ export const POST = handleApi(async (request: NextRequest) => {
   const folder = kind === "image" ? "images" : "songs";
   const key = `${folder}/${now.getUTCFullYear()}/${String(now.getUTCMonth() + 1).padStart(2, "0")}/${randomUUID()}-${sanitizeFileName(file.name)}`;
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const stored = await getStorage().save({ key, body: buffer, contentType });
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const stored = await getStorage().save({ key, body: buffer, contentType });
 
-  return created({
-    key: stored.key,
-    url: stored.url,
-    size: stored.size,
-    contentType,
-    fileName: file.name,
-    kind,
-  });
+    return created({
+      key: stored.key,
+      url: stored.url,
+      size: stored.size,
+      contentType,
+      fileName: file.name,
+      kind,
+    });
+  } catch (error) {
+    /*
+     * Ghi file that bai - pho bien nhat: dang chay tren Vercel/serverless (o dia CHI DOC)
+     * ma STORAGE_DRIVER van la "local" -> mkdir/writeFile nem EROFS. Bao ro huong xu ly
+     * thay vi loi 500 chung de nguoi dung/dang tri biet can doi storage (xem HUONG-DAN-DEPLOY-VERCEL.md).
+     */
+    return serverError(
+      error,
+      "Không ghi được file vào storage. Nếu đang chạy trên Vercel/serverless hãy đặt STORAGE_DRIVER=s3 và cấu hình các biến S3_* (xem HUONG-DAN-DEPLOY-VERCEL.md).",
+    );
+  }
 });

@@ -69,9 +69,29 @@ Dán đúng các biến dưới đây (Production + Preview):
    - Cách B (đúng chuẩn): upload trực tiếp lên S3/R2 bằng **presigned URL** — cần sửa code ở
      `src/app/api/upload/route.ts` + `src/components/admin/add-music-form.tsx`.
    - Cách C: nếu bắt buộc up file lớn → dùng nền tảng chạy **Docker/container** (xem mục 5).
-2. **Ổ đĩa tạm thời.** `STORAGE_DRIVER=local` sẽ mất file mỗi lần deploy. Trên Vercel phải dùng
-   `STORAGE_DRIVER=s3`. Bucket miễn phí, không cần thẻ: **Cloudflare R2** (10 GB), **Backblaze B2**
-   (10 GB), **Supabase Storage** (1 GB). Driver S3 đã có sẵn ở `src/lib/storage/s3.ts`.
+2. **Ổ đĩa chỉ đọc (serverless).** `STORAGE_DRIVER=local` trên Vercel sẽ **không ghi được file**
+   (lỗi `EROFS` → API trả "Lỗi hệ thống, vui lòng thử lại sau" ngay khi tải file lên).
+   Trên Vercel **bắt buộc** `STORAGE_DRIVER=s3`:
+   - **Cloudflare R2 (khuyên dùng — miễn phí 10 GB, không cần thẻ):**
+     1. [dash.cloudflare.com](https://dash.cloudflare.com) → **R2 Object Storage** → **Create bucket**
+        (ví dụ `nhaccuahoiks`) → vùng để mặc định.
+     2. Vào bucket → **Settings** → bật **Public access (r2.dev)** → copy URL dạng
+        `https://pub-xxxx.r2.dev` (đây là nơi phát nhạc — không có thì file tải lên không phát được,
+        vì `/api/files` sẽ redirect 302 tới URL này).
+     3. **Manage R2 API Tokens** → **Create API token** → quyền **Object Read & Write** (scope: bucket vừa tạo)
+        → copy **Access Key ID** + **Secret Access Key**.
+     4. Điền vào `.env` rồi chạy lại `npm run deploy:vercel` (script tự nạp các biến này lên Vercel):
+        ```env
+        STORAGE_DRIVER="s3"
+        S3_ENDPOINT="https://<ACCOUNT_ID>.r2.cloudflarestorage.com"
+        S3_REGION="auto"
+        S3_BUCKET="nhaccuahoiks"
+        S3_ACCESS_KEY_ID="<tu buoc 3>"
+        S3_SECRET_ACCESS_KEY="<tu buoc 3>"
+        S3_PUBLIC_BASE_URL="https://pub-xxxx.r2.dev"
+        ```
+   - Bucket khác: **Backblaze B2** (10 GB), **Supabase Storage** (1 GB), **AWS S3** — cùng cấu hình `S3_*`.
+     Driver đã có sẵn ở `src/lib/storage/s3.ts`.
 3. **Gói Hobby chỉ dùng cá nhân / phi thương mại.** Nếu đây là hệ thống nội bộ cho doanh nghiệp và
    có tính thương mại, xét gói Pro ($20/tháng) hoặc self-host (mục 5).
 4. **Region.** Mặc định Vercel `iad1` (Mỹ) gần Neon `us-east-2` → truy vấn CSDL nhanh hơn. Đổi sang

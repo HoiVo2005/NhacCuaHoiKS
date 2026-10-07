@@ -17,6 +17,11 @@ function Read-EnvValue([string]$key) {
   return ($line -split "=", 2)[1].Trim().Trim([char]34)
 }
 
+# Storage doc tu .env (mac dinh "local"). TREN VERCEL serverless PHAI dat "s3" + dien S3_*
+# (local se loi EROFS -> API tra "Loi he thong, vui long thu lai sau" khi upload file).
+$storageDriver = Read-EnvValue "STORAGE_DRIVER"
+if ([string]::IsNullOrWhiteSpace($storageDriver)) { $storageDriver = "local" }
+
 # Cac bien se nap len Vercel (key -> value)
 $vars = [ordered]@{
   "DATABASE_URL"           = Read-EnvValue "DATABASE_URL"
@@ -26,14 +31,25 @@ $vars = [ordered]@{
   "AUTH_TRUST_HOST"        = "true"
   "AUTH_USE_SECURE_COOKIES"= "true"
   "NEXT_PUBLIC_APP_NAME"   = "NhacCuaHoiKS"
-  # Vercel la serverless (khong ghi duoc o dia) -> tinh nang upload se khong dung duoc.
-  # De "local" cho an toan (khong loi khi khoi tao); sau nay muon upload thi doi "s3" + dien S3_*.
-  "STORAGE_DRIVER"         = "local"
+  # STORAGE_DRIVER lay tu .env (mac dinh local) - xem ghi chu o tren
+  "STORAGE_DRIVER"         = $storageDriver
   "STORAGE_LOCAL_DIR"      = ".data/uploads"
   "STORAGE_PUBLIC_PREFIX"  = "/api/files"
   # 10 MB theo yeu cau - NHUNG Vercel van chan request > ~4.5 MB truoc khi app chay (xem HUONG-DAN-DEPLOY-VERCEL.md)
   "UPLOAD_MAX_BYTES"       = "10485760"
   "METADATA_TIMEOUT_MS"    = "8000"
+}
+
+# STORAGE_DRIVER=s3 -> bat buoc day du thong tin S3/R2 (thieu se bi vong validation duoi chan ro rang)
+if ($storageDriver -eq "s3") {
+  foreach ($key in @("S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY")) {
+    $vars[$key] = Read-EnvValue $key
+  }
+  # Cac bien tuy chon (chi nap khi co gia tri): endpoint R2/MinIO, region, URL public phat nhac
+  foreach ($key in @("S3_ENDPOINT", "S3_REGION", "S3_PUBLIC_BASE_URL")) {
+    $value = Read-EnvValue $key
+    if (-not [string]::IsNullOrWhiteSpace($value)) { $vars[$key] = $value }
+  }
 }
 
 foreach ($k in $vars.Keys) {
