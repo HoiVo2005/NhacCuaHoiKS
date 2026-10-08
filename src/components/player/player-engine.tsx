@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ import {
 } from "@/lib/background-playback";
 import {
   findRestartSeekTarget,
+  PLAYBACK_SNAPSHOT_INTERVAL_MS,
   readPlaybackSnapshot,
   resolveResumeStartAt,
   writePlaybackSnapshot,
@@ -142,6 +143,23 @@ export function PlayerEngine() {
    * (xem `findRestartSeekTarget` trong `src/lib/playback-restore.ts`).
    */
   const peakRef = useRef(0);
+
+  /**
+   * Chốt vị trí đang nghe + trạng thái phát/tạm dừng vào `localStorage` (xem
+   * `src/lib/playback-restore.ts`): nếu trang hay iframe bị tải lại thì lượt nạp sau phát tiếp
+   * đúng chỗ thay vì từ 0:00. Gọi ở: trang bị ẩn, sắp đóng (`pagehide`), mỗi lần đổi trạng thái
+   * phát và định kỳ khi đang phát (trường hợp hệ điều hành kill app mà không kịp bắn sự kiện).
+   */
+  const savePlaybackSnapshot = useCallback((): void => {
+    const state = usePlayerStore.getState();
+    const song = state.current;
+
+    writePlaybackSnapshot(
+      song
+        ? { songId: song.id, seconds: state.progress, wasPlaying: state.isPlaying, at: Date.now() }
+        : null,
+    );
+  }, []);
 
   /** Chan gui trung: chi mot request ghi lich su dang bay tai mot thoi diem */
   const historyInFlightRef = useRef(false);
@@ -563,20 +581,9 @@ export function PlayerEngine() {
     };
 
     /**
-     * Chốt vị trí đang nghe vào `localStorage`: nếu sau đó trang hay iframe bị trình duyệt tải lại
-     * thì lượt nạp bài sẽ phát tiếp đúng chỗ thay vì từ 0:00 (xem `src/lib/playback-restore.ts`).
+     * Chot vi tri dang nghe (huong dan trong `savePlaybackSnapshot` o component) - neu sau do
+     * trang hay iframe bi trinh duyet tai lai thi luot nap bai se phat tiep dung cho.
      */
-    const savePlaybackSnapshot = (): void => {
-      const state = usePlayerStore.getState();
-      const song = state.current;
-
-      writePlaybackSnapshot(
-        song
-          ? { songId: song.id, seconds: state.progress, wasPlaying: state.isPlaying, at: Date.now() }
-          : null,
-      );
-    };
-
     const onVisibilityChange = (): void => {
       // Đặt lại loại phiên âm thanh ngay (lúc trang bị ẩn, trình duyệt thường xoá thiết lập này)
       reapplyBackgroundAudioSession();
@@ -620,7 +627,7 @@ export function PlayerEngine() {
 
       for (const timer of retryTimers) window.clearTimeout(timer);
     };
-  }, []);
+  }, [savePlaybackSnapshot]);
 
   // Nap bai nhac khi bai hien tai thay doi
   useEffect(() => {
@@ -662,8 +669,12 @@ export function PlayerEngine() {
         now: Date.now(),
       }) ?? 0;
 
-    // Chot chi dung mot lan (ke ca khi khong phuc vu - du du lieu cu cua bai khac con ton tai)
-    writePlaybackSnapshot(null);
+    /*
+     * Phiên nghe ĐANG diễn ra mà bị tải lại -> tự phát tiếp LUON, không chờ bấm Phát: nguồn nhúng
+     * có `allow="autoplay"` nên thường được phép; nếu trình duyệt chặn (file tải lên trên iOS...)
+     * thì báo "bấm Phát" như cũ - vị trí vẫn giữ nên bấm vào là chạy đúng chỗ.
+     */
+    const shouldResumeSession = resumeAt > 0;
 
     peakRef.current = resumeAt;
     if (resumeAt > 0) {
@@ -672,12 +683,15 @@ export function PlayerEngine() {
     }
 
     void engine.load(current, resumeAt).then(() => {
+      // Xoá chot SAU khi nạp xong (React StrictMode chạy effect 2 lần -> lần hai vẫn đọc được)
+      writePlaybackSnapshot(null);
+
       const state = usePlayerStore.getState();
 
       // Nguoi dung da doi sang bai khac trong luc dang nap
       if (state.current?.id !== current.id) return;
 
-      const decision = resolveAutoPlay(wasPlaying, state.isPlaying);
+      const decision = resolveAutoPlay(wasPlaying || shouldResumeSession, state.isPlaying);
 
       // Khoa lai y dinh phat neu mot su kien pause cu da lat trang thai
       if (decision.restorePlaying) {
@@ -696,16 +710,29 @@ export function PlayerEngine() {
     const song = usePlayerStore.getState().current;
     if (!song) return;
 
-    const engine = enginesRef.current[song.sourceType];
-    if (!engine) return;
+    // Moi luc doi phat/tam dung deu chot vi tri + trang thai (tru truong hop he dieu hanh kill
+    // trang ma khong co pagehide/hidden thi lan mo sau van biet dung cho da nghe)
+    savePlaybackSnapshot();
 
-    if (isPlaying) {
-      void engine.play();
-    } else {
-      void engine.pause();
+    const engine = enginesRef.current[song.sourceType];
+    if (engine) {
+      if (isPlaying) {
+        void engine.play();
+      } else {
+        void engine.pause();
+      }
     }
+
+    if (!isPlaying) return;
+
+    /*
+     * Dang phat: chot dinh ky moi `PLAYBACK_SNAPSHOT_INTERVAL_MS` - neu he dieu hanh giet app luc
+     * dang nghe nen khong co lan chot nao o luc an/dong thi vi tri cu van chi lech it giay.
+     */
+    const snapshotTimer = window.setInterval(savePlaybackSnapshot, PLAYBACK_SNAPSHOT_INTERVAL_MS);
+    return () => window.clearInterval(snapshotTimer);
      
-  }, [isPlaying, current?.id]);
+  }, [isPlaying, current?.id, savePlaybackSnapshot]);
 
   // Dong bo am luong
   useEffect(() => {

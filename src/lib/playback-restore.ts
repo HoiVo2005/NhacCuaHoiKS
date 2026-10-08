@@ -30,6 +30,15 @@ export const PLAYBACK_SNAPSHOT_MAX_AGE_MS = 15 * 60_000;
 /** Dưới mức này coi như mới bắt đầu bài -> không cần nối (đầu bài gần 0:00, nối vô nghĩa) */
 export const PLAYBACK_SNAPSHOT_MIN_SECONDS = 5;
 
+/**
+ * Chốt vị trí định kỳ khi đang phát (ms). Lúc trang bị ẩn / sắp đóng đã chốt riêng rồi, nhưng nếu
+ * hệ điều hành BẤT NGỜ kill app lúc đang nghe nền thì bản chốt cuối mới là thứ được đọc lại - chốt
+ * mỗi 10 giây để "tuổi" snapshot tính từ lúc app chết chứ không phải lúc rời app (vẫn trong
+ * `PLAYBACK_SNAPSHOT_MAX_AGE_MS`). Timer lúc trang bị ẩn bị trình duyệt gộp về ≥1s nên 10s vẫn chạy
+ * ổn định; nếu trình duyệt gộp xuống 1 lần/phút thì vị trí cũng chỉ lệch tối đa ~60s.
+ */
+export const PLAYBACK_SNAPSHOT_INTERVAL_MS = 10_000;
+
 export interface PlaybackSnapshot {
   /** Bài đang phát lúc chốt - chỉ nối khi bài được nạp lại CÙNG bài */
   songId: string;

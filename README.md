@@ -320,9 +320,13 @@ Quy ước áp dụng:
   - **Nghe dở mà bị tải lại KHÔNG bị phát lại từ đầu**: lúc trang bị ẩn / sắp đóng, app **chốt vị trí
     đang nghe** vào `localStorage` (`src/lib/playback-restore.ts`) — nếu trang hoặc `iframe` nhúng bị
     trình duyệt **tải lại** trong 15 phút (TikTok còn `autoplay=1` nên reload là chạy lại từ 0:00)
-    thì lượt nạp bài phát tiếp **đúng chỗ đã nghe**; chỉ chốt khi lúc đó còn **đang phát** nên
-    “nghe tiếp phiên cũ” mà bạn đã yêu cầu gỡ vẫn bị gỡ (tạm dừng rồi mở lại sau vẫn là 0:00), và
-    snapshot dùng một lần là xoá. Trong lúc phát, mỗi báo cáo vị trí còn được so với **đỉnh đã đạt**
+    thì lượt nạp bài phát tiếp **đúng chỗ đã nghe** và **tự phát luôn** (nguồn nhúng có
+    `allow="autoplay"`; nếu trình duyệt chặn thì giữ nguyên vị trí + báo bấm Phát); chỉ chốt khi lúc
+    đó còn **đang phát** nên “nghe tiếp phiên cũ” mà bạn đã yêu cầu gỡ vẫn bị gỡ (tạm dừng rồi mở lại
+    sau vẫn là 0:00), và snapshot dùng một lần là xoá. Khi đang phát còn **chốt định kỳ mỗi 10 giây**
+    (`PLAYBACK_SNAPSHOT_INTERVAL_MS`) cộng mỗi lần đổi trạng thái, nên nếu hệ điều hành kill app bất
+    ngờ thì bản chốt cuối chỉ cách vài giây. Trong lúc phát, mỗi báo cáo vị trí còn được so với
+    **đỉnh đã đạt**
     để tự tua lại nếu media đột ngột nhảy về đầu giữa chừng (`findRestartSeekTarget`). Kiểm chứng:
     `npm run check:resume`.
   - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang

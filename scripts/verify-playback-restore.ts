@@ -14,6 +14,7 @@ import path from "node:path";
 
 import {
   findRestartSeekTarget,
+  PLAYBACK_SNAPSHOT_INTERVAL_MS,
   PLAYBACK_SNAPSHOT_KEY,
   PLAYBACK_SNAPSHOT_MAX_AGE_MS,
   PLAYBACK_SNAPSHOT_MIN_SECONDS,
@@ -50,6 +51,7 @@ const active: PlaybackSnapshot = {
 
 check("Han phuc vu la 15 phut", PLAYBACK_SNAPSHOT_MAX_AGE_MS === 15 * 60_000);
 check("Duoi 5 giay thi khong can noi", PLAYBACK_SNAPSHOT_MIN_SECONDS === 5);
+check("Chot dinh ky khi dang phat moi 10 giay", PLAYBACK_SNAPSHOT_INTERVAL_MS === 10_000);
 
 check(
   "Dang phat + cung bai + con han -> noi dung cho da nghe",
@@ -193,8 +195,19 @@ check(
     !engineSource.includes("engine.load(current, 0)"),
 );
 check(
-  "Snapshot dung mot lan la xoa (bam vua bai sau van phat tu dau)",
+  "Snapshot dung mot lan la xoa SAU khi nap xong (StrictMode chay 2 lan van doc duoc)",
   engineSource.includes("writePlaybackSnapshot(null)"),
+);
+check(
+  "Trang tai lai -> tu PHAT TIEP phien nghe (khong can bam Phat)",
+  engineSource.includes("resolveAutoPlay(wasPlaying || shouldResumeSession") &&
+    engineSource.includes("shouldResumeSession = resumeAt > 0"),
+);
+check(
+  "Chot vi tri: luc an trang/sap dong + moi luc doi phat/tam dung + dinh ky khi dang phat",
+  engineSource.includes("savePlaybackSnapshot();") &&
+    engineSource.includes("setInterval(savePlaybackSnapshot, PLAYBACK_SNAPSHOT_INTERVAL_MS)") &&
+    engineSource.includes('window.addEventListener("pagehide", savePlaybackSnapshot)'),
 );
 check(
   "Canh bao media tai lai -> tu tua lai cho cu",
