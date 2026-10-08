@@ -303,15 +303,20 @@ Quy ước áp dụng:
     bằng tay) — kể cả sau khi **cuộc gọi kết thúc** hay ứng dụng khác nhả quyền phát (nghe `statechange`
     của phiên âm thanh). Với nguồn nhúng, lệnh “phát tiếp” còn phải hỏi thẳng trình phát trước khi bỏ
     qua, vì `iframe` có thể đã bị tạm dừng khi ở nền mà không báo gì.
-  - **Quay lại tiền cảnh là tự phát tiếp — và thử lại lần hai nếu cần**: nếu sau 1,2 giây động cơ vẫn báo
-    **chưa phát** (`PlayerEngine.reportsPlaying` + `shouldRetryResumePlayback`) thì app gọi phát lại lần
-    nữa, vì lệnh phát đầu tiên rất dễ bị bỏ qua ngay khi app vừa được đánh thức.
+  - **Quay lại tiền cảnh là tự phát tiếp — và "đạp" liên tục tới khi trình phát xác nhận**: ngoài lệnh
+    phát ngay lúc quay lại, app gửi lại lệnh “phát” **mỗi 300ms** (tối đa 4 giây,
+    `FOREGROUND_RESUME_KICK_MS` + `shouldKickForegroundResume`) cho tới khi động cơ báo **đang phát**
+    (`PlayerEngine.reportsPlaying`) — nên không còn cảnh nhạc im ~2 giây rồi mới chạy lại; nếu vẫn cần
+    thì lần thử lại sau 1,2 giây (`shouldRetryResumePlayback`) vẫn giữ làm mạng an toàn.
   - **Nguồn nhúng TikTok tự tạm dừng khi trang bị ẩn** (code trong `iframe` của TikTok phản ứng riêng với
     `visibilitychange`, khác YouTube/SoundCloud vẫn chạy tiếp) — nên khi đang ở nền trình phát **gửi lệnh
-    “phát” lại mỗi 3 giây** cho nguồn nhúng (`shouldKeepAlivePlayback` + `KEEP_ALIVE_KICK_MS`,
-    `src/lib/background-playback.ts`) để nhạc TikTok không bị tắt giữa chừng; TikTok cũng trả lời
-    `reportsPlaying` nên quay lại app được ưu tiên **thử phát lần hai**. Nguồn `<audio>` không bị “đạp”
-    như vậy, vì lệnh phát bị trình duyệt chặn sẽ thành báo lỗi và tắt luôn ý định nghe.
+    “phát” lại mỗi 1 giây** cho nguồn nhúng (`shouldKeepAlivePlayback` + `KEEP_ALIVE_KICK_MS`,
+    `src/lib/background-playback.ts`), **đạp ngay lúc trang vừa bị ẩn**, và đạp **ngay lập tức** mỗi khi
+    TikTok báo đã tự tạm dừng / `pause` của lúc ở nền đến muộn (`shouldReplayAfterSystemPause` — tin nhắn
+    sự kiện đi được cả khi trang bị ẩn, không bị trình duyệt gộp như `setTimeout`) để nhạc không bị tắt
+    giữa chừng; TikTok cũng trả lời `reportsPlaying` nên quay lại app được ưu tiên **thử phát lần hai**.
+    Nguồn `<audio>` không bị “đạp” như vậy, vì lệnh phát bị trình duyệt chặn sẽ thành báo lỗi và tắt luôn
+    ý định nghe.
   - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang
     ngắt quãng (cuộc gọi đang tới, ứng dụng khác đang phát).
   - Luật nằm ở `src/lib/background-playback.ts` — kiểm chứng bằng `npm run check:background`.

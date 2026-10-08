@@ -13,10 +13,13 @@ import {
   watchAudioSessionState,
 } from "@/lib/audio-session";
 import {
+  FOREGROUND_RESUME_KICK_MS,
   isSystemPause,
   KEEP_ALIVE_KICK_MS,
   RESUME_RETRY_DELAY_MS,
   shouldKeepAlivePlayback,
+  shouldKickForegroundResume,
+  shouldReplayAfterSystemPause,
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
@@ -121,6 +124,12 @@ export function PlayerEngine() {
    * (xem `INTERRUPTION_PAUSE_GRACE_MS` trong `src/lib/background-playback.ts`).
    */
   const visibleAtRef = useRef(0);
+  /**
+   * Thời điểm cuối gửi lại lệnh "phát" khi hệ thống tự tạm dừng (TikTok tự dừng lúc trang bị ẩn /
+   * pause của lúc ở nền đến muộn) - giữ khoảng cách tối thiểu `SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS`
+   * để TikTok có tiếp tục tự tạm dừng cũng không thành vòng lặp message.
+   */
+  const lastSystemReplayAtRef = useRef(0);
 
   /** Chan gui trung: chi mot request ghi lich su dang bay tai mot thoi diem */
   const historyInFlightRef = useRef(false);
@@ -158,14 +167,42 @@ export function PlayerEngine() {
          * Nếu lật `isPlaying = false` ở đây thì "ý định đang nghe" bị mất và quay lại app là nhạc nằm
          * im - đúng lỗi "chuyển sang ứng dụng khác là hết nhạc" (xem `src/lib/background-playback.ts`).
          */
+        const state = usePlayerStore.getState();
+        const documentHidden =
+          typeof document !== "undefined" && document.visibilityState === "hidden";
+        const msSinceVisible = Date.now() - visibleAtRef.current;
+
         if (
           isSystemPause({
             switching: switchingRef.current,
-            documentHidden:
-              typeof document !== "undefined" && document.visibilityState === "hidden",
-            msSinceVisible: Date.now() - visibleAtRef.current,
+            documentHidden,
+            msSinceVisible,
           })
         ) {
+          /*
+           * Hệ thống tự tạm dừng mà người dùng vẫn muốn nghe (TikTok TỰ dừng ngay khi trang bị ẩn,
+           * hoặc `pause` của lúc ở nền đến muộn khi vừa quay lại) -> gửi lệnh `play` lại NGAY.
+           * Đây là sự kiện/tin nhắn nên đến được cả khi trang bị ẩn (không bị gộp như `setTimeout`
+           * ~1s lúc nền, cũng nhanh hơn lần thử lại sau 1,2 giây) -> khoảng dừng gần như bằng 0
+           * thay vì ~3 giây lúc thoát app hay ~2 giây khi vào lại (xem `shouldReplayAfterSystemPause`).
+           */
+          const song = state.current;
+          if (
+            song &&
+            shouldReplayAfterSystemPause({
+              switching: switchingRef.current,
+              documentHidden,
+              msSinceVisible,
+              wantsPlaying: state.isPlaying,
+              embedSource: EMBED_SOURCE_TYPES.has(song.sourceType),
+              audioSessionInterrupted: isAudioSessionInterrupted(currentAudioSessionHost()),
+              msSinceLastReplay: Date.now() - lastSystemReplayAtRef.current,
+            })
+          ) {
+            lastSystemReplayAtRef.current = Date.now();
+            const engine = enginesRef.current[song.sourceType];
+            if (engine) void engine.play();
+          }
           return;
         }
 
@@ -327,17 +364,22 @@ export function PlayerEngine() {
    *
    * Trình duyệt coi trang đang ẩn là không còn hoạt động: loại phiên âm thanh có thể bị đưa về `"auto"`
    * (iOS lại xếp Web Audio vào nhóm âm thanh nền -> đang nghe mà mở app khác là nhạc dừng) và phiên
-   * phát có thể bị tạm dừng. Vì vậy ở đây làm bốn việc:
+   * phát có thể bị tạm dừng. Vì vậy ở đây làm các việc:
    *  1. Đặt lại loại phiên âm thanh NGAY lúc trang bị ẩn và mỗi lần quay lại tiền cảnh.
    *  2. Quay lại tiền cảnh: nếu người dùng vẫn đang nghe thì tự phát tiếp - trình duyệt tự tạm dừng lúc
-   *     ở nền nhưng KHÔNG tự phát lại.
+   *     ở nền nhưng KHÔNG tự phát lại. Và khi động cơ vẫn báo CHƯA phát thì cứ mỗi
+   *     `FOREGROUND_RESUME_KICK_MS` gửi lại lệnh phát (tối đa `FOREGROUND_RESUME_KICK_WINDOW_MS`)
+   *     thay vì chỉ thử một lần sau 1,2 giây - nhờ vậy không còn cảnh nhạc im ~2 giây khi vào lại app
+   *     (`shouldKickForegroundResume`; lần thử sau 1,2 giây của `shouldRetryResumePlayback` vẫn giữ
+   *     làm mạng an toàn).
    *  3. Hệ thống hết ngắt quãng (cuộc gọi kết thúc / ứng dụng khác nhả quyền phát): cũng phát tiếp, vì
    *     thẻ <audio> có thể đã bị tạm dừng mà không tự chạy lại.
-   *  4. Sau khi quay lại, nếu động cơ XÁC NHẬN nó vẫn chưa phát thì thử phát lại một lần nữa - lệnh phát
-   *     đầu tiên rất dễ bị bỏ qua ngay khi app vừa được hệ thống đánh thức (`shouldRetryResumePlayback`).
-   *  5. Trong lúc ĐANG ở nền, cứ mỗi `KEEP_ALIVE_KICK_MS` gửi lại lệnh phát cho nguồn nhúng - riêng
-   *     player TikTok tự tạm dừng ngay khi trang bị ẩn (YouTube/SoundCloud thì không), không "đạp" là
-   *     nhạc tắt hẳn (`shouldKeepAlivePlayback`).
+   *  4. Hệ thống báo TỰ tạm dừng (TikTok tự dừng ngay lúc trang bị ẩn, `pause` của lúc ở nền đến muộn):
+   *     gửi lệnh phát lại NGAY trong `onPause` - tin nhắn sự kiện đến được cả khi trang bị ẩn và không
+   *     bị gộp như timer (`shouldReplayAfterSystemPause`).
+   *  5. Trong lúc ĐANG ở nền: ĐẠP NGAY lúc trang vừa bị ẩn rồi cứ mỗi `KEEP_ALIVE_KICK_MS` gửi lại lệnh
+   *     phát cho nguồn nhúng - riêng player TikTok tự tạm dừng ngay khi trang bị ẩn (YouTube/SoundCloud
+   *     thì không), không "đạp" là nhạc tắt hẳn (`shouldKeepAlivePlayback`).
    */
   useEffect(() => {
     /** Cac hen gio kiem tra lai sau khi quay lai tien canh (don sach khi unmount) */
@@ -385,6 +427,54 @@ export function PlayerEngine() {
       keepAliveTimer = window.setInterval(keepAliveTick, KEEP_ALIVE_KICK_MS);
     };
 
+    /*
+     * Hẹn đạp lệnh phát lại LIÊN TỤC khi quay lại tiền cảnh - dừng khi động cơ XÁC NHẬN đã phát
+     * hoặc hết cửa sổ `FOREGROUND_RESUME_KICK_WINDOW_MS` (xem `shouldKickForegroundResume`). Trước đây
+     * chỉ thử lại một lần sau 1,2 giây, nên nếu cả lệnh phát lúc quay lại lẫn lần thử đều bị `iframe`
+     * TikTok bỏ qua thì nhạc im ~2 giây mới chạy - đúng lỗi "vào lại ứng dụng bị dừng 2s".
+     */
+    let resumeKickTimer: number | null = null;
+    let resumeKickStartedAt = 0;
+    let resumeKickSongId: string | null = null;
+
+    const stopResumeKick = (): void => {
+      if (resumeKickTimer === null) return;
+      window.clearTimeout(resumeKickTimer);
+      resumeKickTimer = null;
+    };
+
+    const resumeKickTick = (): void => {
+      resumeKickTimer = null;
+
+      const state = usePlayerStore.getState();
+      const song = state.current;
+      // Đổi bài trong lúc đạp -> bỏ qua, lượt mới do hiệu ứng nạp bài lo (tránh đạp vào bài cũ)
+      if (!song || song.id !== resumeKickSongId) return;
+
+      const engine = enginesRef.current[song.sourceType];
+      if (!engine) return;
+
+      const kick = shouldKickForegroundResume({
+        wantsPlaying: state.isPlaying,
+        documentHidden: document.visibilityState === "hidden",
+        audioSessionInterrupted: isAudioSessionInterrupted(currentAudioSessionHost()),
+        embedSource: EMBED_SOURCE_TYPES.has(song.sourceType),
+        actuallyPlaying: engine.reportsPlaying?.() ?? true,
+        elapsedMs: Date.now() - resumeKickStartedAt,
+      });
+      if (!kick) return;
+
+      void engine.play();
+      resumeKickTimer = window.setTimeout(resumeKickTick, FOREGROUND_RESUME_KICK_MS);
+    };
+
+    const startResumeKick = (): void => {
+      stopResumeKick();
+      resumeKickStartedAt = Date.now();
+      resumeKickSongId = usePlayerStore.getState().current?.id ?? null;
+      // Lệnh phát đầu tiên `resumeIfNeeded` vừa gửi ngay -> nhịp đạp đầu tiên sau 300ms
+      resumeKickTimer = window.setTimeout(resumeKickTick, FOREGROUND_RESUME_KICK_MS);
+    };
 
     /** Phát tiếp nếu người dùng vẫn đang nghe mà phiên phát bị hệ thống tạm dừng */
     const resumeIfNeeded = (): void => {
@@ -407,6 +497,9 @@ export function PlayerEngine() {
        * tải lên, `AudioEngine.play()` còn đánh thức lại `AudioContext` mà trình duyệt treo lúc ở nền.
        */
       void engine.play();
+
+      // Đạp lại liên tục mỗi 300ms tới khi động cơ xác nhận đã phát (xem `shouldKickForegroundResume`)
+      startResumeKick();
 
       /*
        * Thử LẦN THỨ HAI sau một nhịp: ngay khi app vừa được đánh thức, lệnh phát đầu tiên rất dễ bị bỏ
@@ -437,7 +530,8 @@ export function PlayerEngine() {
       reapplyBackgroundAudioSession();
 
       if (document.visibilityState === "hidden") {
-        // Bat dau day lenh phat lai (neu dang phat); tick se tu bo qua khi khong can
+        // ĐẠP NGAY lúc vừa bị ẩn - không đợi nhịp đầu của keep-alive; tick tự bỏ qua khi không cần
+        keepAliveTick();
         startKeepAlive();
         return;
       }
@@ -465,6 +559,7 @@ export function PlayerEngine() {
       window.removeEventListener("pageshow", onPageShow);
       unwatchAudioSession?.();
       stopKeepAlive();
+      stopResumeKick();
 
       for (const timer of retryTimers) window.clearTimeout(timer);
     };

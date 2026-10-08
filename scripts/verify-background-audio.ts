@@ -22,11 +22,16 @@ import {
   type AudioSessionType,
 } from "@/lib/audio-session";
 import {
+  FOREGROUND_RESUME_KICK_MS,
+  FOREGROUND_RESUME_KICK_WINDOW_MS,
   INTERRUPTION_PAUSE_GRACE_MS,
   isSystemPause,
   KEEP_ALIVE_KICK_MS,
   RESUME_RETRY_DELAY_MS,
+  SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS,
   shouldKeepAlivePlayback,
+  shouldKickForegroundResume,
+  shouldReplayAfterSystemPause,
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
@@ -126,7 +131,10 @@ const keepAlive = {
   embedSource: true,
 };
 
-check("Chu ky day lenh phat lai khi o nen la 3 giay", KEEP_ALIVE_KICK_MS === 3_000);
+check(
+  "Chu ky day lenh phat lai khi o nen la 1 GIAY (truoc day 3 giay -> thoat app thay nhac dung ~3s)",
+  KEEP_ALIVE_KICK_MS === 1_000,
+);
 check("O nen + van dang nghe + nguon nhung -> day lenh phat lai", shouldKeepAlivePlayback(keepAlive));
 check(
   "O nen + nguon nhung NHUNG nguoi dung da tam dung -> khong day",
@@ -152,6 +160,94 @@ check(
   !needsWebAudioGraph(0) && !needsWebAudioGraph(0.8) && !needsWebAudioGraph(1),
 );
 check("Chi muc > 100% moi dung Web Audio (khuech dai)", needsWebAudioGraph(1.5));
+
+/* ------- 2e. Quay lai tien canh: dap lenh phat LIEN TUC den khi dong co xac nhan da phat ------- */
+
+/** Quay lai tien canh + nguon nhung + dong co xac nhan CHUA phat -> moi duoc dap */
+const foregroundKick = {
+  wantsPlaying: true,
+  documentHidden: false,
+  audioSessionInterrupted: false,
+  embedSource: true,
+  actuallyPlaying: false,
+  elapsedMs: 0,
+};
+
+check("Moi 300ms dap lenh phat lai mot lan khi quay lai tien canh", FOREGROUND_RESUME_KICK_MS === 300);
+check("Cua so dap lai toi da 4 giay", FOREGROUND_RESUME_KICK_WINDOW_MS === 4_000);
+check("Dong co van bao CHUA phat -> tiep tuc dap", shouldKickForegroundResume(foregroundKick));
+check(
+  "Dong co xac nhan DANG phat -> dung dap ngay (khong gui lenh thua)",
+  !shouldKickForegroundResume({ ...foregroundKick, actuallyPlaying: true }),
+);
+check(
+  "Het cua so 4 giay van chua phat -> dung (khong spam lenh)",
+  !shouldKickForegroundResume({ ...foregroundKick, elapsedMs: FOREGROUND_RESUME_KICK_WINDOW_MS }),
+);
+check(
+  "Quay lai nhung nguoi dung da bam tam dung -> khong dap",
+  !shouldKickForegroundResume({ ...foregroundKick, wantsPlaying: false }),
+);
+check("Trang lai bi an -> khong dap", !shouldKickForegroundResume({ ...foregroundKick, documentHidden: true }));
+check(
+  "He thong con ngat quang (cuoc goi / app khac dang phat) -> khong dap",
+  !shouldKickForegroundResume({ ...foregroundKick, audioSessionInterrupted: true }),
+);
+check(
+  "Nguon UPLOADED (the <audio>) -> khong dap (lenh phat bi chan se thanh bao loi)",
+  !shouldKickForegroundResume({ ...foregroundKick, embedSource: false }),
+);
+
+/* ---- 2f. He thong TU tam dung (TikTok dung luc o nen / pause den muon) -> dap lai NGAY, khong cho ---- */
+
+/** Nen TikTok tu tam dung khi trang bi an + van dang nghe + he thong binh thuong */
+const systemReplay = {
+  switching: false,
+  documentHidden: true,
+  msSinceVisible: 60_000,
+  wantsPlaying: true,
+  embedSource: true,
+  audioSessionInterrupted: false,
+  msSinceLastReplay: SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS,
+};
+
+check(
+  "Giua hai lan dap khi he thong tu tam dung toi thieu 400ms (khong vong lap message)",
+  SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS === 400,
+);
+check("O nen + van dang nghe + nguon nhung -> dap lai NGAY (khong cho nhap keep-alive)", shouldReplayAfterSystemPause(systemReplay));
+check(
+  "Pause cua luc o nen den muon khi vua quay lai tien canh -> van duoc dap",
+  shouldReplayAfterSystemPause({ ...systemReplay, documentHidden: false, msSinceVisible: 200 }),
+);
+check(
+  "Trang sang lau roi moi nhan pause -> day la pause cua NGUOI DUNG -> khong dap",
+  !shouldReplayAfterSystemPause({
+    ...systemReplay,
+    documentHidden: false,
+    msSinceVisible: INTERRUPTION_PAUSE_GRACE_MS,
+  }),
+);
+check("Dang chuyen bai -> khong dap", !shouldReplayAfterSystemPause({ ...systemReplay, switching: true }));
+check(
+  "Chua du 400ms tu lan dap truoc -> bo qua (han che CPU neu TikTok tiep tuc tu dung)",
+  !shouldReplayAfterSystemPause({
+    ...systemReplay,
+    msSinceLastReplay: SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS - 1,
+  }),
+);
+check(
+  "Nguoi dung bam tam dung tu man hinh khoa (wantsPlaying=false) -> khong dap",
+  !shouldReplayAfterSystemPause({ ...systemReplay, wantsPlaying: false }),
+);
+check(
+  "He thong dang ngat quang -> khong dap (khong gan quyen phat giua chung)",
+  !shouldReplayAfterSystemPause({ ...systemReplay, audioSessionInterrupted: true }),
+);
+check(
+  "Nguon UPLOADED -> khong dap (lenh phat bi chan se thanh bao loi va tat luon y dinh nghe)",
+  !shouldReplayAfterSystemPause({ ...systemReplay, embedSource: false }),
+);
 
 /* --------------------- 3. Phien am thanh phai duoc DAT LAI khi bi xoa --------------------- */
 
@@ -304,6 +400,21 @@ check(
     engineSource.includes("stopKeepAlive"),
 );
 check(
+  "Vua trang bi an -> DAP lenh phat NGAY (khong cho toi nhap keep-alive dau tien)",
+  engineSource.includes("keepAliveTick();"),
+);
+check(
+  "Quay lai tien canh: dap lenh phat moi 300ms den khi dong co xac nhan da phat",
+  engineSource.includes("shouldKickForegroundResume({") &&
+    engineSource.includes("FOREGROUND_RESUME_KICK_MS") &&
+    engineSource.includes("startResumeKick"),
+);
+check(
+  "He thong tu tam dung (TikTok o nen / pause den muon) -> dap lai NGAY trong onPause",
+  engineSource.includes("shouldReplayAfterSystemPause({") &&
+    engineSource.includes("lastSystemReplayAtRef"),
+);
+check(
   "Chi day cho nguon nhung - nguon UPLOADED (the <audio>) khong bi day",
   engineSource.includes("EMBED_SOURCE_TYPES.has(song.sourceType)"),
 );
@@ -340,7 +451,9 @@ check(
     readmeSource.includes("Nghe nhạc khi chuyển sang tab") &&
     readmeSource.includes("ambient") &&
     readmeSource.includes("needsWebAudioGraph") &&
-    readmeSource.includes("KEEP_ALIVE_KICK_MS"),
+    readmeSource.includes("KEEP_ALIVE_KICK_MS") &&
+    readmeSource.includes("FOREGROUND_RESUME_KICK_MS") &&
+    readmeSource.includes("shouldReplayAfterSystemPause"),
 );
 
 /* --------------------------------- Ket qua --------------------------------- */

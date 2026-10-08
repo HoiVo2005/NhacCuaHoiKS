@@ -97,6 +97,53 @@ export function shouldRetryResumePlayback(input: {
 }
 
 /**
+ * Chu kỳ "đạp lệnh phát lại" LIÊN TỤC khi vừa quay lại tiền cảnh (ms).
+ *
+ * Trước đây khi quay lại app chỉ có MỘT lệnh `play` ngay lúc đánh thức và một lần thử lại sau 1,2
+ * giây. Nếu cả hai đều bị `iframe` TikTok bỏ qua (nó đang tự thức dậy sau khi trang sáng lại, hoặc
+ * tự tạm dừng một lần nữa trong lúc sang trang) thì nhạc im ~2 giây mới chạy - đúng lỗi người dùng
+ * báo "vào lại ứng dụng bị dừng 2s rồi phát lại". Đạp mỗi 300ms thì lần đầu tiên mà TikTok chấp
+ * nhận là nhạc chạy ngay (thường ở nhịp đầu tiên).
+ */
+export const FOREGROUND_RESUME_KICK_MS = 300;
+
+/**
+ * Tối đa bao lâu tiếp tục đạp lệnh phát lại sau khi quay lại tiền cảnh (ms) - quá cửa sổ này mà động
+ * cơ vẫn báo chưa phát thì dừng (để không spam lệnh khi thật sự có sự cố), trả lại cho
+ * `shouldRetryResumePlayback` (một lần sau 1,2 giây) lo phần còn lại.
+ */
+export const FOREGROUND_RESUME_KICK_WINDOW_MS = 4_000;
+
+/**
+ * Có nên gửi lệnh "phát" lại NGAY lúc này khi vừa quay lại tiền cảnh không?
+ * Phải đúng CẢ BỐN:
+ *  - `embedSource`: chỉ nguồn nhúng (YouTube/SoundCloud/TikTok) - giống luật keep-alive ở trên;
+ *  - `wantsPlaying` + trang ở tiền cảnh + không bị hệ thống ngắt quãng: như `shouldResumePlayback`;
+ *  - `actuallyPlaying = false`: động cơ XÁC NHẬN nó chưa phát (chưa báo state 1). Động cơ không
+ *    báo thì coi như đang phát (`?? true`) - không biết thì không "đạp" thừa (giống
+ *    `shouldRetryResumePlayback`);
+ *  - `elapsedMs < FOREGROUND_RESUME_KICK_WINDOW_MS`: chỉ trong cửa sổ ngắn sau khi quay lại.
+ */
+export function shouldKickForegroundResume(input: {
+  wantsPlaying: boolean;
+  documentHidden: boolean;
+  audioSessionInterrupted: boolean;
+  embedSource: boolean;
+  actuallyPlaying: boolean;
+  elapsedMs: number;
+}): boolean {
+  if (!input.embedSource || !input.wantsPlaying) return false;
+  if (input.documentHidden || input.audioSessionInterrupted) return false;
+  if (input.actuallyPlaying) return false;
+
+  const elapsed = Number.isFinite(input.elapsedMs)
+    ? input.elapsedMs
+    : Number.POSITIVE_INFINITY;
+
+  return elapsed < FOREGROUND_RESUME_KICK_WINDOW_MS;
+}
+
+/**
  * Chu kỳ "đạp lệnh phát lại" trong lúc trang đang Ở NỀN (ms).
  *
  * Nguồn nhúng YouTube/SoundCloud tự chạy tiếp khi trang bị ẩn, nhưng player TikTok thì
@@ -104,8 +151,13 @@ export function shouldRetryResumePlayback(input: {
  * `visibilitychange` - hành vi cố ý chống nghe nền của họ). Vì vậy khi đang ở nền phải gửi lại
  * lệnh `play` sau mỗi nhịp này, lặp lại vì lệnh đầu tiên có thể đến trước lúc TikTok kịp tự dừng
  * (hoặc bị trình duyệt gộp/throttle lúc tab nền).
+ *
+ * Trước đây nhịp là 3 giây nên người dùng thoát app thấy nhạc "chết" ~3 giây mới chạy lại. Trình
+ * duyệt đã gộp timer lúc trang bị ẩn về tối thiểu ~1 giây (Chrome/Safari đều vậy) nên 1 giây là
+ * nhịp nhanh nhất có ý nghĩa - thêm `shouldReplayAfterSystemPause` (đáp ngay khi TikTok báo tự tạm
+ * dừng) thì khoảng dừng hầu như không còn thấy.
  */
-export const KEEP_ALIVE_KICK_MS = 3_000;
+export const KEEP_ALIVE_KICK_MS = 1_000;
 
 /**
  * Có nên gửi lệnh "phát lại" cho động cơ khi trang đang Ở NỀN không?
@@ -133,4 +185,56 @@ export function shouldKeepAlivePlayback(input: {
     input.documentHidden &&
     !input.audioSessionInterrupted
   );
+}
+
+/**
+ * Khoảng cách tối thiểu giữa hai lần "đạp lại lệnh phát" khi hệ thống tự tạm dừng (ms).
+ *
+ * Sự kiện `pause` do hệ thống gây ra (TikTok tự dừng lúc trang bị ẩn, `pause` của lúc ở nền đến
+ * muộn khi vừa quay lại...) đi qua `postMessage`/lắng nghe sự kiện nên ĐẾN ĐƯỢC ngay cả khi trang
+ * đang bị ẩn - khác `setTimeout` bị trình duyệt gộp về ~1s lúc nền. Nhờ đó đáp lại NGAY được thay
+ * vì chờ nhịp keep-alive. Tốc độ bị chặn lại ở mức này để nếu TikTok vẫn tiếp tục tự tạm dừng
+ * (chính sách chống nghe nền của họ) thì không vòng lặp message ăn CPU.
+ */
+export const SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS = 400;
+
+/**
+ * Có nên gửi lệnh "phát" lại NGAY khi vừa nhận được sự kiện `pause` do HỆ THỐNG gây ra không?
+ * Phải đúng HẾT:
+ *  - KHÔNG phải lúc đang chuyển bài: `pause` ở đây do thay `src`/nạp bài mới gây ra, hiệu ứng nạp
+ *    bài tự lo phần phát tiếp, đạp lệnh lúc này có thể tới trước khi bài mới kịp nạp;
+ *  - `isSystemPause` đúng: trang đang ở nền, hoặc vừa quay lại tiền cảnh (pause của lúc ở nền đến
+ *    muộn) - pause của người dùng (bấm tạm dừng) thì KHÔNG được đạp lại;
+ *  - `wantsPlaying`: store vẫn ở trạng thái phát;
+ *  - `embedSource`: chỉ nguồn nhúng - nguồn `<audio>` không đạp (xem `shouldKeepAlivePlayback`);
+ *  - không đang bị hệ thống ngắt quãng (cuộc gọi tới / app khác chiếm quyền phát);
+ *  - đã đủ `SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS` kể từ lần đạp trước.
+ */
+export function shouldReplayAfterSystemPause(input: {
+  switching: boolean;
+  documentHidden: boolean;
+  msSinceVisible: number;
+  wantsPlaying: boolean;
+  embedSource: boolean;
+  audioSessionInterrupted: boolean;
+  msSinceLastReplay: number;
+}): boolean {
+  if (input.switching) return false;
+
+  const systemPause = isSystemPause({
+    switching: input.switching,
+    documentHidden: input.documentHidden,
+    msSinceVisible: input.msSinceVisible,
+  });
+  if (!systemPause) return false;
+
+  if (!input.wantsPlaying || !input.embedSource || input.audioSessionInterrupted) {
+    return false;
+  }
+
+  const sinceLast = Number.isFinite(input.msSinceLastReplay)
+    ? input.msSinceLastReplay
+    : Number.POSITIVE_INFINITY;
+
+  return sinceLast >= SYSTEM_PAUSE_REPLAY_MIN_INTERVAL_MS;
 }
