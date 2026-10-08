@@ -368,6 +368,12 @@ Quy ước áp dụng:
 - Âm lượng, tắt tiếng và vị trí tua đặt **trước** khi player sẵn sàng sẽ được áp dụng ngay sau `onReady`.
 - Nếu YouTube không sẵn sàng sau 15 giây, hệ thống báo lỗi rõ ràng và cho phép phát lại
   (thay vì treo hoặc ném TypeError).
+- **"Phát tiếp" khi ở nền không bị cờ cũ chặn**: lệnh `play` chỉ bỏ qua khi hỏi thẳng trình phát
+  (`getPlayerState`) là **đang phát thật**; nếu trình duyệt tự tạm dừng iframe lúc trang bị ẩn mà
+  **không bắn `onStateChange`** (cờ `currentlyPlaying` còn true nhưng trình phát đang dừng) thì lệnh
+  vẫn được gửi — nếu chặn theo cờ, mọi nhịp keep-alive lúc ở nền lẫn đạp khi quay lại tiền cảnh đều bị
+  bỏ qua và nhạc nằm im. SoundCloud cũng trả lời `reportsPlaying` từ sự kiện `PLAY`/`PAUSE` của widget
+  để các nhịp đạp này hoạt động tương đương (có test trong `check:youtube` + `check:soundcloud`).
 - **Âm lượng**: kéo thanh trượt ở thanh phát nhỏ hoặc trình phát đầy đủ; thanh trượt **không bao giờ bị
   khoá** và chỉ dài tới **mức tối đa thực tế của nguồn đang phát** (trước đây mọi nguồn đều dài 0–200%
   nên với nguồn nhúng, đoạn 100–200% là “vùng chết”: kéo mà âm thanh không to hơn → tưởng hỏng).

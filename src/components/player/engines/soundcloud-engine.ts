@@ -36,6 +36,11 @@ export class SoundCloudEngine implements PlayerEngine {
   private callbacks: PlayerAdapterCallbacks;
   private ready = false;
   private pendingPlay = false;
+  /**
+   * Widget dang PHAT theo su kien PLAY/PAUSE/FINISH moi nhat (dung cho `reportsPlaying` -
+   * xem ly do trong phuong thuc).
+   */
+  private playing = false;
   private durationSeconds = 0;
   private durationAttempts = 0;
   private progressTimer: number | null = null;
@@ -124,6 +129,7 @@ export class SoundCloudEngine implements PlayerEngine {
     };
 
     bind(widgetEventName("READY"), () => {
+      this.playing = false;
       this.callbacks.onReady?.();
       this.refreshDuration();
 
@@ -135,17 +141,20 @@ export class SoundCloudEngine implements PlayerEngine {
     });
 
     bind(widgetEventName("PLAY"), () => {
+      this.playing = true;
       this.callbacks.onPlay?.();
       this.startProgressPolling();
       this.refreshDuration();
     });
 
     bind(widgetEventName("PAUSE"), () => {
+      this.playing = false;
       this.stopProgressPolling();
       this.callbacks.onPause?.();
     });
 
     bind(widgetEventName("FINISH"), () => {
+      this.playing = false;
       this.stopProgressPolling();
       this.callbacks.onEnded?.();
     });
@@ -158,6 +167,7 @@ export class SoundCloudEngine implements PlayerEngine {
     bind(widgetEventName("LOAD_PROGRESS"), () => this.refreshDuration());
 
     bind(widgetEventName("ERROR"), () => {
+      this.playing = false;
       this.stopProgressPolling();
       this.callbacks.onError?.("Không phát được bài nhạc này trên SoundCloud.");
     });
@@ -215,6 +225,9 @@ export class SoundCloudEngine implements PlayerEngine {
 
     this.callbacks.onBuffering?.(true);
 
+    // Bai moi chua bao gio phat -> khong duoc bao "dang phat" cho den khi widget ban su kien PLAY
+    this.playing = false;
+
     // Dung thoi luong da co trong CSDL truoc de thanh thoi gian co tong ngay
     this.durationSeconds = song.durationSeconds > 0 ? song.durationSeconds : 0;
     this.durationAttempts = 0;
@@ -247,6 +260,18 @@ export class SoundCloudEngine implements PlayerEngine {
   async pause(): Promise<void> {
     this.stopProgressPolling();
     this.widget?.pause();
+  }
+
+  /**
+   * Trinh phat dang THAT SU phat? (xem `PlayerEngine.reportsPlaying`)
+   *
+   * Doc tu su kien PLAY/PAUSE/FINISH moi nhat cua widget. Dung khi quay lai tien canh: trinh duyet
+   * co the da tu tam dung widget luc o nen ma khong ai bao, va cac lenh "dap lai" noi day
+   * (`shouldKickForegroundResume`, `shouldRetryResumePlayback`) chi chay khi dong co xac nhan CHUA
+   * phat - truoc day SoundCloud khong tra loi nen bi bo qua khoang dap nay.
+   */
+  reportsPlaying(): boolean {
+    return this.playing;
   }
 
   seek(seconds: number): void {
@@ -299,6 +324,7 @@ export class SoundCloudEngine implements PlayerEngine {
     this.widget = null;
     this.ready = false;
     this.pendingPlay = false;
+    this.playing = false;
     this.durationSeconds = 0;
     this.durationAttempts = 0;
   }

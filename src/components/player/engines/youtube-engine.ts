@@ -374,11 +374,11 @@ export class YouTubeEngine implements PlayerEngine {
 
   async play(): Promise<void> {
     /*
-     * Đã phát rồi thì không gửi lại lệnh (nhiều effect có thể cùng gọi `play`).
-     *
-     * NGOẠI LỆ: sau khi app ra nền, trình duyệt có thể đã tự tạm dừng iframe. Nếu cứ tin vào cờ
-     * `currentlyPlaying` thì lệnh "phát tiếp" lúc quay lại tiền cảnh (xem `player-engine.tsx`) sẽ bị
-     * bỏ qua ngay tại đây -> nhạc vẫn nằm im. Vì vậy phải hỏi thẳng trình phát trước khi bỏ qua.
+     * Không gửi lệnh trùng khi đang phát THẬT SỰ - và "thật sự" phải HỎI thẳng trình phát
+     * (`playerReportsPlaying`), KHÔNG được tin cờ `currentlyPlaying`: sau khi app ra nền trình duyệt
+     * có thể tự tạm dừng iframe mà KHÔNG bắn `onStateChange` (hoặc sự kiện tới muộn) -> cờ còn true
+     * trong khi trình phát đang dừng. Chặn theo cờ từng làm mọi lệnh "phát tiếp" (keep-alive lúc ở
+     * nền, đạp khi quay lại tiền cảnh - xem `player-engine.tsx`) bị bỏ qua -> nhạc nằm im.
      */
     if (this.currentlyPlaying && this.playerReportsPlaying()) return;
 
@@ -387,7 +387,14 @@ export class YouTubeEngine implements PlayerEngine {
       await this.ensureReady();
     }
 
-    if (!this.isPlayerUsable() || this.currentlyPlaying) return;
+    if (!this.isPlayerUsable()) return;
+
+    /*
+     * Hỏi lại SAU khi chờ onReady: nhiều lệnh `play()` chạy song song (ví dụ gọi `play` khi player
+     * chưa sẵn sàng) - lệnh nào thấy trình phát đã phát thì thôi; lệnh nào thấy cờ còn true nhưng
+     * trình phát CHƯA phát (tạm dừng âm thầm khi ở nền) thì VẪN phải gửi, không được bỏ qua.
+     */
+    if (this.currentlyPlaying && this.playerReportsPlaying()) return;
 
     this.currentlyPlaying = true;
     this.player!.playVideo();

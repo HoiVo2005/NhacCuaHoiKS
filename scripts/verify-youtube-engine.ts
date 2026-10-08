@@ -102,6 +102,8 @@ const state = {
   /** mo phong truong hop onReady khong bao gio chay */
   neverReady: false,
   apiInstalled: false,
+  /** Trang thai hien tai cua player (-1: chua bat dau) - getPlayerState() phan hoi lu dung cai nay */
+  playerState: -1,
 };
 
 class FakeYouTubePlayer {
@@ -120,18 +122,25 @@ class FakeYouTubePlayer {
       if (state.neverReady) return;
 
       // Handshake xong: luc nay YT moi gan cac method len chinh object nay
+      // fireState: cap nhat TRANG THAI truoc khi bắn su kien - de `getPlayerState()` phan hoi
+      // dung thuc te (truoc day hardcoded 1 -> khong mo phong duoc truong hop "tam dung am tham")
+      const fireState = (data: number) => {
+        state.playerState = data;
+        this.options.events.onStateChange({ data });
+      };
+
       Object.assign(this, {
         playVideo: () => {
           stats.playVideo += 1;
-          this.options.events.onStateChange({ data: 1 });
+          fireState(1);
         },
         pauseVideo: () => {
           stats.pauseVideo += 1;
-          this.options.events.onStateChange({ data: 2 });
+          fireState(2);
         },
         loadVideoById: (o: { videoId: string }) => {
           stats.loadedSongs.push(o.videoId);
-          this.options.events.onStateChange({ data: 5 });
+          fireState(5);
         },
         seekTo: (seconds: number) => {
           stats.seekTo.push(seconds);
@@ -147,7 +156,7 @@ class FakeYouTubePlayer {
         },
         getDuration: () => 200,
         getCurrentTime: () => 0,
-        getPlayerState: () => 1,
+        getPlayerState: () => state.playerState,
         destroy: () => {
           stats.destroyed += 1;
         },
@@ -327,6 +336,46 @@ async function main(): Promise<void> {
     `playVideo=${stats.playVideo}`,
   );
   failing.destroy();
+
+  // ---- 6. Ra nen: trinh duyet TAM DUNG iframe ma KHONG bắn onStateChange ----
+  stats.loadedSongs.length = 0;
+  const backgrounded = createEngine();
+  await backgrounded.load(song, 0);
+  await backgrounded.play();
+
+  const playsBeforeSilentPause = stats.playVideo;
+  check(
+    "Truoc khi mo phong ra nen: dang phat binh thuong",
+    backgrounded.reportsPlaying() === true,
+    `playVideo=${playsBeforeSilentPause}`,
+  );
+
+  // Trinh duyet tam dung luc o nen ma khong gui su kien - chi biet khi hoi truc tiep getPlayerState()
+  state.playerState = 2;
+
+  check(
+    "O nen: cờ `currentlyPlaying` van true nhung trinh phat da dung (reportsPlaying=false)",
+    backgrounded.reportsPlaying() === false,
+  );
+
+  await backgrounded.play();
+
+  check(
+    "Van gui duoc lenh play (khong bi co `currentlyPlaying` cu chan) -> nhac chay lai",
+    stats.playVideo === playsBeforeSilentPause + 1,
+    `playVideo=${stats.playVideo} (truoc do ${playsBeforeSilentPause})`,
+  );
+  check("Trinh phat chay lai sau lenh play", backgrounded.reportsPlaying() === true);
+
+  const playsWhilePlaying = stats.playVideo;
+  await backgrounded.play();
+  check(
+    "Dang phat that su -> khong gui lenh trung",
+    stats.playVideo === playsWhilePlaying,
+    `playVideo=${stats.playVideo}`,
+  );
+
+  backgrounded.destroy();
 
   const failures = results.filter((line) => line.startsWith("FAIL"));
   console.log(results.join("\n"));

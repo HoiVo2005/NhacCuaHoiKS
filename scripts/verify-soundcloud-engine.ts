@@ -219,10 +219,15 @@ async function main(): Promise<void> {
   );
   check("Doc duoc thoi luong tu widget", events.includes("duration:210"), events.join(","));
 
+  // reportsPlaying: dung cho cac lenh "dap lai lenh phat" khi quay lai tien canh
+  // (truoc day SoundCloud khong tra loi -> bi bo qua khoang dap nay)
+  check("reportsPlaying(): false khi moi nap bai (chua phat)", engine.reportsPlaying() === false);
+
   // --------------------------------------------------------------- 2. Phat nhac
   await engine.play();
   await sleep(20);
   check("Bao su kien play", events.includes("play"), events.join(","));
+  check("reportsPlaying(): dung true sau su kien PLAY", engine.reportsPlaying() === true);
 
   // ---- 3. Widget khong ban playProgress -> dong ho du phong van phai chay
   timeUpdates.length = 0;
@@ -260,6 +265,7 @@ async function main(): Promise<void> {
   if (widget) widget.positionMs = 12000;
   await sleep(1150);
   check("Tam dung: khong con cap nhat tien do", timeUpdates.length === 0, String(timeUpdates.length));
+  check("reportsPlaying(): dung false sau su kien PAUSE", engine.reportsPlaying() === false);
 
   // ----------------------------------------------------------- 7. Doi bai khac
   events.length = 0;

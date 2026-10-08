@@ -350,6 +350,7 @@ check(
 const engineSource = source("src/components/player/player-engine.tsx");
 const audioEngineSource = source("src/components/player/engines/audio-engine.ts");
 const youtubeSource = source("src/components/player/engines/youtube-engine.ts");
+const soundcloudSource = source("src/components/player/engines/soundcloud-engine.ts");
 const tiktokSource = source("src/components/player/engines/tiktok-engine.ts");
 const backgroundLibSource = source("src/lib/background-playback.ts");
 const readmeSource = source("README.md");
@@ -423,6 +424,17 @@ check(
   tiktokSource.includes("reportsPlaying(): boolean") &&
     tiktokSource.includes("this.lastState === 1") &&
     tiktokSource.includes("this.lastState = -1"),
+);
+check(
+  "SoundCloud: tra loi reportsPlaying (truoc nay thieu -> bi bo qua khoang dap lenh phat)",
+  soundcloudSource.includes("reportsPlaying(): boolean") &&
+    soundcloudSource.includes("this.playing = true") &&
+    soundcloudSource.includes("this.playing = false"),
+);
+check(
+  "YouTube: khong chan lenh phat bang co `currentlyPlaying` cu (tam dung am tham o nen -> nhac nam im)",
+  youtubeSource.includes("if (this.currentlyPlaying && this.playerReportsPlaying()) return;") &&
+    !youtubeSource.includes("|| this.currentlyPlaying"),
 );
 check(
   "The <audio> khong bi dat `display: none` (Chromium coi do la \"khong duoc ve\" -> co the tam dung am thanh)",
