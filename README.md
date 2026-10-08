@@ -317,6 +317,14 @@ Quy ước áp dụng:
     giữa chừng; TikTok cũng trả lời `reportsPlaying` nên quay lại app được ưu tiên **thử phát lần hai**.
     Nguồn `<audio>` không bị “đạp” như vậy, vì lệnh phát bị trình duyệt chặn sẽ thành báo lỗi và tắt luôn
     ý định nghe.
+  - **Nghe dở mà bị tải lại KHÔNG bị phát lại từ đầu**: lúc trang bị ẩn / sắp đóng, app **chốt vị trí
+    đang nghe** vào `localStorage` (`src/lib/playback-restore.ts`) — nếu trang hoặc `iframe` nhúng bị
+    trình duyệt **tải lại** trong 15 phút (TikTok còn `autoplay=1` nên reload là chạy lại từ 0:00)
+    thì lượt nạp bài phát tiếp **đúng chỗ đã nghe**; chỉ chốt khi lúc đó còn **đang phát** nên
+    “nghe tiếp phiên cũ” mà bạn đã yêu cầu gỡ vẫn bị gỡ (tạm dừng rồi mở lại sau vẫn là 0:00), và
+    snapshot dùng một lần là xoá. Trong lúc phát, mỗi báo cáo vị trí còn được so với **đỉnh đã đạt**
+    để tự tua lại nếu media đột ngột nhảy về đầu giữa chừng (`findRestartSeekTarget`). Kiểm chứng:
+    `npm run check:resume`.
   - **Không** tự phát tiếp khi: người dùng đã bấm tạm dừng, trang vẫn đang ở nền, hoặc hệ thống đang
     ngắt quãng (cuộc gọi đang tới, ứng dụng khác đang phát).
   - Luật nằm ở `src/lib/background-playback.ts` — kiểm chứng bằng `npm run check:background`.
@@ -1032,6 +1040,7 @@ npm run check:lyrics  # Test loi bai hat (doc LRC, dong dang hat, cache CSDL, tr
 npm run check:thumbs  # Test anh bia net (nang cap maxresdefault/t500x500, tu ha cap khi anh loi)
 npm run check:media   # Test Media Session (thong tin + anh bia net, nut tren man hinh khoa, thanh thoi gian)
 npm run check:background # Test nghe nhac khi chuyen sang app khac (dat lai phien am thanh, phat tiep khi quay lai)
+npm run check:resume  # Test phat tiep dung cho da nghe khi trang/iframe bi tai lai (khong phat lai tu dau)
 npm run check:search  # Test tim kiem khong phan biet hoa/thuong (PostgreSQL) + email dang nhap
 npm run check:mobile  # Test quy tac giao dien dien thoai (chong zoom khi focus o nhap, khong chan pinch-zoom)
 npm run check:youtube # Test dong co YouTube (khong can server, khong can trinh duyet)

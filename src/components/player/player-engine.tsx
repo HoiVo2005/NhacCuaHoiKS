@@ -23,6 +23,12 @@ import {
   shouldResumePlayback,
   shouldRetryResumePlayback,
 } from "@/lib/background-playback";
+import {
+  findRestartSeekTarget,
+  readPlaybackSnapshot,
+  resolveResumeStartAt,
+  writePlaybackSnapshot,
+} from "@/lib/playback-restore";
 import { isEqActive } from "@/lib/sound-profiles";
 import { cn } from "@/lib/utils";
 import { EMBED_MAX_VOLUME } from "@/lib/volume";
@@ -130,6 +136,12 @@ export function PlayerEngine() {
    * để TikTok có tiếp tục tự tạm dừng cũng không thành vòng lặp message.
    */
   const lastSystemReplayAtRef = useRef(0);
+  /**
+   * Vị trí XA NHẤT đã đạt trong bài hiện tại - dùng để nhận ra media bị tải lại từ đầu lúc ở
+   * nền (iframe nhúng bị trình duyệt reload) và tua lại đúng chỗ đã nghe
+   * (xem `findRestartSeekTarget` trong `src/lib/playback-restore.ts`).
+   */
+  const peakRef = useRef(0);
 
   /** Chan gui trung: chi mot request ghi lich su dang bay tai mot thoi diem */
   const historyInFlightRef = useRef(false);
@@ -215,6 +227,31 @@ export function PlayerEngine() {
         // Store quyet dinh co chap nhan vi tri nay khong (ngay sau khi nguoi dung tua,
         // dong co co the con bao vi tri cu -> bi bo qua de thanh thoi gian khong giat).
         usePlayerStore.getState().setProgress(currentTime, duration);
+
+        /*
+         * Phát hiện media bị TẢI LẠI từ đầu lúc đang nghe dở: iframe nhúng có thể bị trình duyệt
+         * reload sau thời gian dài trang bị ẩn (TikTok còn `autoplay=1` nên nó chạy lại từ 0:00
+         * ngay, nhạc "vẫn chạy" nhưng bị đá về đầu). Vị trí báo về thụt lùi quá xa so với đỉnh đã
+         * đạt -> tự tua lại chỗ cũ. Đang tua / đang chuyển bài thì bỏ qua (store lo `pendingSeek`,
+         * switch-guard lo chuyển bài) - xem `findRestartSeekTarget`.
+         */
+        const latest = usePlayerStore.getState();
+        const restartTarget = findRestartSeekTarget({
+          seconds: currentTime,
+          peak: peakRef.current,
+          duration,
+          switching: switchingRef.current,
+          pendingSeek: latest.pendingSeek,
+        });
+
+        if (restartTarget !== null) {
+          latest.seek(restartTarget);
+          return;
+        }
+
+        if (!switchingRef.current && latest.pendingSeek === null && currentTime > peakRef.current) {
+          peakRef.current = currentTime;
+        }
       },
       onDuration: (duration) => {
         const song = usePlayerStore.getState().current;
@@ -525,11 +562,28 @@ export function PlayerEngine() {
       retryTimers.push(timer);
     };
 
+    /**
+     * Chốt vị trí đang nghe vào `localStorage`: nếu sau đó trang hay iframe bị trình duyệt tải lại
+     * thì lượt nạp bài sẽ phát tiếp đúng chỗ thay vì từ 0:00 (xem `src/lib/playback-restore.ts`).
+     */
+    const savePlaybackSnapshot = (): void => {
+      const state = usePlayerStore.getState();
+      const song = state.current;
+
+      writePlaybackSnapshot(
+        song
+          ? { songId: song.id, seconds: state.progress, wasPlaying: state.isPlaying, at: Date.now() }
+          : null,
+      );
+    };
+
     const onVisibilityChange = (): void => {
       // Đặt lại loại phiên âm thanh ngay (lúc trang bị ẩn, trình duyệt thường xoá thiết lập này)
       reapplyBackgroundAudioSession();
 
       if (document.visibilityState === "hidden") {
+        // Chốt vị trí TRƯỚC khi trình duyệt có thể đóng băng/tải lại trang hay iframe
+        savePlaybackSnapshot();
         // ĐẠP NGAY lúc vừa bị ẩn - không đợi nhịp đầu của keep-alive; tick tự bỏ qua khi không cần
         keepAliveTick();
         startKeepAlive();
@@ -551,12 +605,15 @@ export function PlayerEngine() {
 
     document.addEventListener("visibilitychange", onVisibilityChange);
     window.addEventListener("pageshow", onPageShow);
+    /** Sắp đóng tab / chuyển trang: chốt lại vị trí (lần mở sau còn hạn thì phát tiếp chỗ cũ) */
+    window.addEventListener("pagehide", savePlaybackSnapshot);
 
     const unwatchAudioSession = watchAudioSessionState(currentAudioSessionHost(), resumeIfNeeded);
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.removeEventListener("pageshow", onPageShow);
+      window.removeEventListener("pagehide", savePlaybackSnapshot);
       unwatchAudioSession?.();
       stopKeepAlive();
       stopResumeKick();
@@ -590,11 +647,31 @@ export function PlayerEngine() {
     }
 
     /*
-     * Mọi lượt phát đều bắt đầu từ 0:00: tính năng "nghe tiếp từ chỗ dừng" (tự phát nốt vị trí đã
-     * nghe dở) đã được gỡ bỏ theo yêu cầu, nên không còn đọc `localStorage` để nạp vào giữa bài.
-     * Động cơ vẫn nhận `startAt` (mặc định 0) cho những chỗ gọi khác.
+     * Vị trí bắt đầu của lượt nạp:
+     *  - Mặc định 0:00 - tính năng "nghe tiếp từ chỗ dừng" (đóng app rồi mở lại là phát nốt chỗ
+     *    cũ) vẫn bị gỡ theo yêu cầu;
+     *  - NGẠI TRỪ đúng trường hợp "vừa đang NGHE mà trang/iframe bị tải lại": lúc trang bị ẩn /
+     *    sắp đóng đã chốt vị trí vào `localStorage`, nếu còn trong hạn và vẫn là bài này thì
+     *    phát tiếp đúng chỗ đã nghe (xem `src/lib/playback-restore.ts`). Snapshot dùng một lần
+     *    là xoá nên bấm vào bài lần sau vẫn phát từ đầu.
      */
-    void engine.load(current, 0).then(() => {
+    const resumeAt =
+      resolveResumeStartAt({
+        snapshot: readPlaybackSnapshot(),
+        songId: current.id,
+        now: Date.now(),
+      }) ?? 0;
+
+    // Chot chi dung mot lan (ke ca khi khong phuc vu - du du lieu cu cua bai khac con ton tai)
+    writePlaybackSnapshot(null);
+
+    peakRef.current = resumeAt;
+    if (resumeAt > 0) {
+      // Thanh thời gian hiện đúng vị trí ngay (động cơ chỉ báo vị trí khi đang phát)
+      usePlayerStore.setState({ progress: resumeAt });
+    }
+
+    void engine.load(current, resumeAt).then(() => {
       const state = usePlayerStore.getState();
 
       // Nguoi dung da doi sang bai khac trong luc dang nap
@@ -692,6 +769,9 @@ export function PlayerEngine() {
     if (song) {
       enginesRef.current[song.sourceType]?.seek(seekRequest.seconds);
     }
+
+    // Tua (kể cả về đầu bài) -> đây là vị trí MỚI của bài, không được coi là "media tự tải lại"
+    peakRef.current = seekRequest.seconds;
 
     // Lenh tua chi dung mot lan: xoa de khong tua lai khi component mount lai
     usePlayerStore.setState({ seekRequest: null });

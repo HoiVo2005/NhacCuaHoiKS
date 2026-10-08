@@ -54,6 +54,7 @@
     "check:thumbs": "tsx scripts/verify-thumbnails.ts",
     "check:media": "tsx scripts/verify-media-session.ts",
     "check:background": "tsx scripts/verify-background-audio.ts",
+    "check:resume": "tsx scripts/verify-playback-restore.ts",
     "check:search": "tsx scripts/verify-search.ts",
     "check:devices": "tsx scripts/verify-devices.ts",
     "check:deploy": "tsx scripts/verify-deploy.ts",

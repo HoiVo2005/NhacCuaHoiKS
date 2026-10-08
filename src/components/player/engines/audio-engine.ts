@@ -252,8 +252,13 @@ export class AudioEngine implements PlayerEngine {
     this.suppressPauseEvent = true;
     this.callbacks.onBuffering?.(true);
     this.audio.src = song.streamUrl;
-    this.audio.currentTime = Math.max(0, startAt);
     this.audio.load();
+    /*
+     * Đặt vị trí SAU `load()`: lệnh `load()` reset lại phần tử media (vị trí về 0) nên đặt TRƯỚC
+     * từng bị mất - file nạp lại phát từ đầu dù truyền `startAt` (dùng lúc trang/iframe bị tải lại
+     * phải nối tiếp chỗ đang nghe - `src/lib/playback-restore.ts`).
+     */
+    this.audio.currentTime = Math.max(0, startAt);
   }
 
   /**
