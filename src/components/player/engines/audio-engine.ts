@@ -287,6 +287,20 @@ export class AudioEngine implements PlayerEngine {
     this.ensureGraph();
     await this.resumeGraphForPlay();
 
+    // Đảm bảo media đã sẵn sàng dữ liệu trước khi gọi play().
+    // Tránh việc gọi play() ngay sau load() khi src vừa được gán nhưng media
+    // chưa ready -> play() thất bại -> onError đặt isPlaying = false ->
+    // người dùng phải bấm Play lại (lỗi "chuyển bài phải bấm 2 lần").
+    // HAVE_CURRENT_DATA = 2 (giá trị enum DOM, tránh import HTMLMediaElement trong môi trường không có DOM)
+    if (this.audio.readyState < 2) {
+      await new Promise<void>((resolve) => {
+        const handler = () => resolve();
+        this.audio.addEventListener("loadedmetadata", handler, { once: true });
+        this.audio.addEventListener("canplay", handler, { once: true });
+        window.setTimeout(resolve, 5000);
+      });
+    }
+
     try {
       await this.audio.play();
     } catch (error) {

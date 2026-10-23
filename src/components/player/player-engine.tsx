@@ -732,7 +732,7 @@ export function PlayerEngine() {
     const snapshotTimer = window.setInterval(savePlaybackSnapshot, PLAYBACK_SNAPSHOT_INTERVAL_MS);
     return () => window.clearInterval(snapshotTimer);
      
-  }, [isPlaying, current?.id, savePlaybackSnapshot]);
+  }, [isPlaying, savePlaybackSnapshot]);
 
   // Dong bo am luong
   useEffect(() => {
