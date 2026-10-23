@@ -95,6 +95,10 @@ function checkSources(): void {
     "File tai len: ham nong bat the <audio> tai truoc",
     audio.includes("prewarm(): void") && audio.includes('this.audio.preload = "auto";'),
   );
+  check(
+    "AudioEngine.destroy() dong AudioContext + xoa do thi khoi WeakMap (giai nguon ngay khi unmount)",
+    audio.includes("this.graph.context.close()") && audio.includes("audioGraphs.delete(this.audio)"),
+  );
 
   check(
     "Trang thai phat ghi xuong localStorage co TIET CHE (khong ghi moi tick tien do)",

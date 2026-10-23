@@ -487,8 +487,14 @@ export class AudioEngine implements PlayerEngine {
     this.audio.removeAttribute("src");
     this.audio.load();
 
-    // Tam dung bo xu ly am thanh khi khong dung nua (co the resume khi phat lai)
-    void this.graph?.context.suspend().catch(() => undefined);
-    this.graph = null;
+    if (this.graph) {
+      // Dong AudioContext de giai nguon tai nguyen am thanh he thong ngay lap tuc.
+      // close() cung tu dong ngat ket noi toan bo node (source, eq, gain, limiter).
+      void this.graph.context.close().catch(() => undefined);
+      this.graph = null;
+    }
+    // Xoa khoi WeakMap de khong giu tham den do thi cua the <audio> (duoc tu dong xoa
+    // khi the bi GC sau khi unmount, xoa sap xep som hon).
+    audioGraphs.delete(this.audio);
   }
 }
